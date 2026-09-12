@@ -26,7 +26,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="module")
 async def test_my_work_postgresql_json_and_timezone_contract(monkeypatch):
     user_id = 910001
     hidden_user_id = 910002
@@ -261,7 +261,7 @@ async def test_my_work_postgresql_json_and_timezone_contract(monkeypatch):
         )
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio(loop_scope="module")
 async def test_my_work_postgresql_tolerates_legacy_epoch_milliseconds():
     """Legacy rows stored JS Date.getTime() as a string in date fields.
     Such values must not abort the whole projects/aggregate when the due
