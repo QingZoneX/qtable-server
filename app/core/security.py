@@ -2,7 +2,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
 import uuid
 
-from jose import JWTError, jwt
+import jwt
+from jwt import InvalidTokenError as JWTError
 from passlib.context import CryptContext
 
 from app.core.config import settings
@@ -89,7 +90,12 @@ def _validate_identity_contract(payload: Dict[str, Any], *, expected_type: str) 
 
 
 def _decode(token: str, *, expected_type: str) -> Dict[str, Any]:
-    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM], options={"verify_aud": False, "verify_iss": False})
+    payload = jwt.decode(
+        token,
+        settings.SECRET_KEY,
+        algorithms=[settings.ALGORITHM],
+        options={"verify_aud": False, "verify_iss": False},
+    )
     return _validate_identity_contract(payload, expected_type=expected_type)
 
 
