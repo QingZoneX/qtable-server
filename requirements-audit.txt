@@ -1,0 +1,6 @@
+# Security / licensing / SBOM tools used by dependency policy checks.
+# These are intentionally exact-pinned so the audit implementation itself
+# does not float independently of a reviewed source change.
+pip-audit==2.10.1
+cyclonedx-bom==7.3.1
+pip-licenses==5.5.5

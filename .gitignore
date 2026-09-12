@@ -1,0 +1,47 @@
+# General
+.DS_Store
+.env*
+!.env.example
+!.env.sqlite.example
+.venv
+.venv/
+venv/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+dist/
+.output/
+.nuxt/
+.vercel/
+
+# IDE / AI coding workspace state
+.vscode/
+.idea/
+.trae/
+.codebuddy/
+
+# Backup / local scratch
+_bak/
+_example/
+
+# Databases and runtime state
+*.db
+*.sqlite
+*.sqlite3
+
+# Credentials / private keys
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519

@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+*.db
+*.sqlite
+*.sqlite3
+
+# Build / distribution
+dist/
+build/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+.DS_Store
+.trae/
+.codebuddy/
+
+# Frontend (deployed separately, not needed in the backend image)
+ui/
+node_modules/
+
+# Backup / misc
+_bak/
+_example/
+*.log
+.log/
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/

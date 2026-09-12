@@ -1,0 +1,119 @@
+# QTable development seed data
+
+`scripts/seed_dev_data.py` creates repeatable QA/demo data without manually inserting rows into PostgreSQL. Normal profiles write records through QTable's `create_records_with_data()` service path, so member validation, relations, auto-number values and change history keep their normal product semantics.
+
+## Safety model
+
+- A write or reset requires `QTABLE_ALLOW_DEV_SEED=true`.
+- The script prints the resolved database driver, host and database name before any write.
+- Seed-owned workspaces must keep both markers: id prefix `wkb_seed_` and name prefix `[SEED]`.
+- Every Seed workspace is created with one normal QTable root folder; generated tables and dashboards are children of that root so they are visible through the same workspace queries used by the UI.
+- Before reporting success, the script validates that the Seed workspace has exactly one folder root and that all generated workspace items are attached to it.
+- `--reset` deletes only the selected seed-owned workspace and its generated tables/system objects. It never runs database-wide `DROP` or `TRUNCATE`.
+- Synthetic users use `seed+devNN@example.com`; they are deleted only when no remaining workspace membership references them. `.invalid` is a special-use TLD, so the login/register API (`EmailStr` validation) rejects it with 422 — never use it for seed accounts. Accounts created by older versions with `@example.invalid` are still cleaned up by `--reset`.
+- Seed members share one deterministic dev-only password, derived from `sha256("qtable-seed-disabled-login")[:32]`; the exact value is printed at the end of every write run.
+- `performance` requires an isolated database whose name contains `dev`, `qa`, `test`, `seed`, or `demo`. The explicit emergency override is `QTABLE_ALLOW_PERFORMANCE_SEED=true`.
+- `--dry-run` validates local template files and performs no database writes.
+
+## Profiles
+
+`realistic` creates the main product demo workspace. With `--records 300`, its scale is:
+
+| Table | Rows |
+| --- | ---: |
+| 产品研发项目 | 300 |
+| Sprint Backlog | 500 |
+| Bug Tracking | 400 |
+| Milestones | 40 |
+| 客户 CRM | 300 |
+| 内容日历 | 200 |
+| 招聘 Pipeline | 150 |
+| 资产管理 | 300 |
+
+`coverage` creates smaller tables with deliberately distributed select states, overdue/current/future dates, empty assignees, varied priorities/progress, and additional Source Inbox, comments, mentions, notifications, Automation and Dashboard objects.
+
+`performance` creates a separate `Performance Records` table. `--records` is the exact row count for this profile. Records are still inserted in service-layer batches by default; use an isolated QA database for large runs.
+
+## Usage
+
+Preview a realistic run:
+
+```bash
+python scripts/seed_dev_data.py \
+  --profile realistic \
+  --records 300 \
+  --seed 20260910 \
+  --dry-run
+```
+
+Write it after checking the printed database target:
+
+```bash
+QTABLE_ALLOW_DEV_SEED=true \
+python scripts/seed_dev_data.py \
+  --profile realistic \
+  --records 300 \
+  --seed 20260910
+```
+
+If the database contains multiple QTable users, select which existing account should own and see the Seed workspace. Use the same email address as the account you use to log into the UI:
+
+```bash
+QTABLE_ALLOW_DEV_SEED=true \
+python scripts/seed_dev_data.py \
+  --profile realistic \
+  --owner-email you@example.com
+```
+
+A successful write now ends with diagnostics similar to:
+
+```text
+Seed complete: wkb_seed_realistic (2,190 rows)
+  owner: you@example.com (user_id=1)
+  root: fld_seed_...
+  workspace tree: OK
+```
+
+The backend serving the UI and the seed command must point to the same database. Compare the database printed by the seed command with the backend's database configuration if a successfully validated Seed workspace is still not visible.
+
+Create product-state coverage data:
+
+```bash
+QTABLE_ALLOW_DEV_SEED=true \
+python scripts/seed_dev_data.py \
+  --profile coverage \
+  --seed 20260910
+```
+
+Create 20,000 performance rows in an isolated QA database:
+
+```bash
+QTABLE_ALLOW_DEV_SEED=true \
+python scripts/seed_dev_data.py \
+  --profile performance \
+  --records 20000 \
+  --seed 20260910
+```
+
+Reset only one profile workspace:
+
+```bash
+QTABLE_ALLOW_DEV_SEED=true \
+python scripts/seed_dev_data.py \
+  --profile realistic \
+  --reset
+```
+
+The default workspaces are:
+
+- `wkb_seed_realistic` → `[SEED] QTable Demo / QA`
+- `wkb_seed_coverage` → `[SEED] QTable Coverage QA`
+- `wkb_seed_performance` → `[SEED] QTable Performance QA`
+
+`--workspace-id` and `--workspace-name` can override them, but the safety prefixes remain mandatory.
+
+## Reproducibility
+
+The random generator is seeded by `--seed` plus the template id and row count. When the seed begins with a valid `YYYYMMDD`, that date also anchors generated due/start dates. For example, `--seed 20260910` always anchors date distributions on `2026-09-10`, so reset + reseed reproduces the same business values rather than drifting with the wall clock.
+
+Record primary keys are generated by QTable's normal service layer and are not expected to be stable across runs.

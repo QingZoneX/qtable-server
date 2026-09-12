@@ -1,0 +1,15 @@
+{
+  "workspaceId": "wkbDefault",
+  "root": {
+    "id": "fldRoot",
+    "name": "Root",
+    "children": [
+      {
+        "type": "table",
+        "id": "dstDefault",
+        "name": "Projects",
+        "defaultViewId": "v1"
+      }
+    ]
+  }
+}

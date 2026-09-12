@@ -1,0 +1,172 @@
+name: Backend Docker Portability
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - "docker-compose.registry.yml"
+      - "dockerhub.env.example"
+      - ".env.example"
+      - "README.md"
+      - "docs/docker-hub.md"
+      - "requirements.txt"
+      - "docker-entrypoint.sh"
+      - "scripts/check_docker_portability.py"
+      - "scripts/check_open_source_readiness.py"
+      - ".github/workflows/docker-portability.yml"
+      - ".github/workflows/docker-publish.yml"
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - "docker-compose.registry.yml"
+      - "dockerhub.env.example"
+      - ".env.example"
+      - "README.md"
+      - "docs/docker-hub.md"
+      - "requirements.txt"
+      - "docker-entrypoint.sh"
+      - "scripts/check_docker_portability.py"
+      - "scripts/check_open_source_readiness.py"
+      - ".github/workflows/docker-portability.yml"
+      - ".github/workflows/docker-publish.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  docker-portability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v7
+
+      - name: Source and distribution portability contract
+        run: |
+          python3 scripts/check_docker_portability.py
+          python3 scripts/check_open_source_readiness.py
+
+      - name: Compose default build-arg contract
+        env:
+          QTABLE_UI_CONTEXT: .
+          ATTACHMENT_S3_ACCESS_KEY: ci-test-access
+          ATTACHMENT_S3_SECRET_KEY: ci-test-storage-key
+        run: |
+          docker compose config --format json > /tmp/qtable-compose-default.json
+          python3 - <<'PY'
+          import json
+          with open('/tmp/qtable-compose-default.json', encoding='utf-8') as handle:
+              config = json.load(handle)
+          args = config['services']['qtable']['build']['args']
+          assert args['PYTHON_IMAGE'] == 'python:3.11-slim', args
+          assert args['APT_MIRROR'] == '', args
+          assert args['PIP_INDEX_URL'] == 'https://pypi.org/simple', args
+          print('[docker-portability] compose official defaults verified')
+          PY
+
+      - name: Compose optional mirror override contract
+        env:
+          QTABLE_UI_CONTEXT: .
+          ATTACHMENT_S3_ACCESS_KEY: ci-test-access
+          ATTACHMENT_S3_SECRET_KEY: ci-test-storage-key
+          PYTHON_IMAGE: mirror.example/library/python:3.11-slim
+          APT_MIRROR: apt.example.internal
+          PIP_INDEX_URL: https://pypi.example.internal/simple/
+        run: |
+          docker compose config --format json > /tmp/qtable-compose-mirror.json
+          python3 - <<'PY'
+          import json
+          with open('/tmp/qtable-compose-mirror.json', encoding='utf-8') as handle:
+              config = json.load(handle)
+          args = config['services']['qtable']['build']['args']
+          assert args['PYTHON_IMAGE'] == 'mirror.example/library/python:3.11-slim', args
+          assert args['APT_MIRROR'] == 'apt.example.internal', args
+          assert args['PIP_INDEX_URL'] == 'https://pypi.example.internal/simple/', args
+          print('[docker-portability] compose mirror overrides verified')
+          PY
+
+      - name: Docker Hub consumer Compose contract
+        env:
+          POSTGRES_PASSWORD: ci-database-password
+          SECRET_KEY: ci-secret-key-long-enough-for-compose-validation
+          ENCRYPTION_KEY: ci-fernet-placeholder-for-compose-validation
+          ATTACHMENT_S3_ACCESS_KEY: ci-test-access
+          ATTACHMENT_S3_SECRET_KEY: ci-test-storage-key
+        run: |
+          docker compose -f docker-compose.registry.yml config --quiet
+          docker compose -f docker-compose.registry.yml config --format json > /tmp/qtable-registry-compose.json
+          python3 - <<'PY'
+          import json
+          with open('/tmp/qtable-registry-compose.json', encoding='utf-8') as handle:
+              config = json.load(handle)
+          assert config['services']['qtable']['image'] == 'qingzonex/qtable:0.1.0-alpha', config['services']['qtable']['image']
+          assert config['services']['qtable-ui']['image'] == 'qingzonex/qtable-ui:0.1.0-alpha', config['services']['qtable-ui']['image']
+          assert config['services']['qtable']['environment']['APP_ENV'] == 'production'
+          print('[docker-portability] registry consumer compose verified')
+          PY
+
+      - name: Build backend with official defaults
+        run: docker build -t qtable-portability:${{ github.sha }} .
+
+      - name: Verify runtime hardening metadata
+        run: |
+          test "$(docker image inspect qtable-portability:${{ github.sha }} --format '{{.Config.User}}')" = "qtable"
+          docker image inspect qtable-portability:${{ github.sha }} --format '{{json .Config.Healthcheck}}' | grep -q '127.0.0.1:9000'
+          docker run --rm --entrypoint sh qtable-portability:${{ github.sha }} -c 'test -f /usr/share/licenses/qtable/LICENSE && test -f /usr/share/licenses/qtable/NOTICE && test -w /app'
+
+      - name: Run real backend container health smoke
+        run: |
+          docker run -d --name qtable-portability-smoke \
+            -p 19000:9000 \
+            -e APP_ENV=development \
+            -e DATABASE_MODE=sqlite \
+            -e SQLITE_PATH=/app/qtable-smoke.db \
+            -e ATTACHMENT_STORAGE_ENABLED=false \
+            -e QTABLE_RUN_MIGRATIONS=true \
+            qtable-portability:${{ github.sha }}
+          trap 'docker logs qtable-portability-smoke || true; docker rm -f qtable-portability-smoke >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:19000/ >/tmp/qtable-health.json; then
+              python3 - <<'PY'
+          import json
+          with open('/tmp/qtable-health.json', encoding='utf-8') as handle:
+              payload = json.load(handle)
+          assert payload['message'] == 'Welcome to QTable API', payload
+          print('[docker-portability] real non-root container health verified')
+          PY
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs qtable-portability-smoke
+          exit 1
+
+      - name: Canonical Compose backend build and health smoke
+        env:
+          ATTACHMENT_S3_ACCESS_KEY: ci-test-access
+          ATTACHMENT_S3_SECRET_KEY: ci-test-storage-key
+          POSTGRES_PASSWORD: postgres
+          QTABLE_API_PORT: 19001
+        run: |
+          trap 'docker compose down -v --remove-orphans || true' EXIT
+          docker compose up --build -d db redis minio qtable
+          for attempt in $(seq 1 120); do
+            if curl --fail --silent http://127.0.0.1:19001/ >/tmp/qtable-compose-health.json; then
+              python3 - <<'PY'
+          import json
+          with open('/tmp/qtable-compose-health.json', encoding='utf-8') as handle:
+              payload = json.load(handle)
+          assert payload['message'] == 'Welcome to QTable API', payload
+          print('[docker-portability] canonical compose backend health verified')
+          PY
+              exit 0
+            fi
+            sleep 1
+          done
+          docker compose ps
+          docker compose logs qtable db redis minio
+          exit 1

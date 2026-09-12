@@ -1,0 +1,161 @@
+name: Publish QTable Docker Hub Image
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/docker-publish.yml"
+      - "Dockerfile"
+      - "VERSION"
+      - "LICENSE"
+      - "NOTICE"
+      - "requirements.txt"
+      - "scripts/check_open_source_readiness.py"
+      - "scripts/check_docker_portability.py"
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dockerhub-qtable-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE_REPOSITORY: ${{ (vars.DOCKERHUB_NAMESPACE || 'qingzonex') }}/qtable
+  SCAN_IMAGE: qtable-release-scan:${{ github.sha }}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Validate release identity and publication authorization
+        id: identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(tr -d '\r\n' < VERSION)"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "VERSION is not a release-like version: $version" >&2
+            exit 1
+          fi
+
+          push=false
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag_version="${GITHUB_REF_NAME#v}"
+            if [[ "$tag_version" != "$version" ]]; then
+              echo "Git tag version $tag_version does not match VERSION $version" >&2
+              exit 1
+            fi
+            if [[ "${{ vars.DOCKERHUB_PUBLISH_ENABLED }}" != "true" ]]; then
+              echo "Docker Hub publication is disabled. Set DOCKERHUB_PUBLISH_ENABLED=true only after release authorization." >&2
+              exit 1
+            fi
+            push=true
+          fi
+
+          created="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "created=$created" >> "$GITHUB_OUTPUT"
+          echo "push=$push" >> "$GITHUB_OUTPUT"
+          echo "QTable release identity: version=$version revision=$GITHUB_SHA created=$created push=$push"
+
+      - name: Open-source and Docker distribution contracts
+        run: |
+          python3 scripts/check_open_source_readiness.py
+          python3 scripts/check_docker_portability.py
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to Docker Hub
+        if: steps.identity.outputs.push == 'true'
+        uses: docker/login-action@v4
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Generate image metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE_REPOSITORY }}
+          flavor: |
+            latest=false
+          tags: |
+            type=raw,value=${{ steps.identity.outputs.version }},enable=${{ steps.identity.outputs.push == 'true' }}
+            type=sha,prefix=sha-,format=short
+            type=raw,value=alpha,enable=${{ steps.identity.outputs.push == 'true' && contains(steps.identity.outputs.version, '-alpha') }}
+            type=raw,value=latest,enable=${{ steps.identity.outputs.push == 'true' && !contains(steps.identity.outputs.version, '-') }}
+          labels: |
+            org.opencontainers.image.title=QTable
+            org.opencontainers.image.description=AI-native open-source project and work management built on multidimensional tables
+            org.opencontainers.image.source=https://github.com/QingZoneX/QTable
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.version=${{ steps.identity.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ steps.identity.outputs.created }}
+
+      - name: Build local image for vulnerability gate
+        shell: bash
+        run: |
+          docker build \
+            --build-arg QTABLE_VERSION="${{ steps.identity.outputs.version }}" \
+            --build-arg QTABLE_REVISION="${GITHUB_SHA}" \
+            --build-arg QTABLE_CREATED="${{ steps.identity.outputs.created }}" \
+            -t "$SCAN_IMAGE" .
+
+      - name: Block HIGH or CRITICAL container vulnerabilities
+        uses: docker/scout-action@v1
+        with:
+          command: cves
+          image: local://${{ env.SCAN_IMAGE }}
+          only-severities: critical,high
+          exit-code: true
+
+      - name: Build and publish multi-arch image
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ steps.identity.outputs.push == 'true' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          build-args: |
+            QTABLE_VERSION=${{ steps.identity.outputs.version }}
+            QTABLE_REVISION=${{ github.sha }}
+            QTABLE_CREATED=${{ steps.identity.outputs.created }}
+          provenance: mode=max
+          sbom: true
+
+      - name: Record build result
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "## QTable Docker image"
+            echo
+            echo "- Repository: \`${IMAGE_REPOSITORY}\`"
+            echo "- Version: \`${{ steps.identity.outputs.version }}\`"
+            echo "- Revision: \`${GITHUB_SHA}\`"
+            echo "- Digest: \`${{ steps.build.outputs.digest }}\`"
+            echo "- Platforms: \`linux/amd64\`, \`linux/arm64\`"
+            echo "- Pushed: \`${{ steps.identity.outputs.push }}\`"
+            echo "- HIGH/CRITICAL CVE gate: passed"
+            echo "- SBOM: enabled"
+            echo "- Provenance: mode=max"
+          } >> "$GITHUB_STEP_SUMMARY"

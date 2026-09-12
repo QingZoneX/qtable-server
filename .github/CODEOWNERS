@@ -1,0 +1,12 @@
+# Default maintainer ownership for the first public Alpha.
+* @boychina
+
+# High-risk surfaces require explicit maintainer review.
+/app/core/ @boychina
+/app/api/ @boychina
+/app/services/ @boychina
+/alembic/ @boychina
+/.github/workflows/ @boychina
+/docker-compose.yml @boychina
+/Dockerfile @boychina
+/SECURITY.md @boychina

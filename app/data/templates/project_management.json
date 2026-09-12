@@ -1,0 +1,150 @@
+{
+  "id": "project_management",
+  "fields": [
+    {
+      "id": "f1",
+      "name": "任务名称",
+      "type": "text",
+      "property": { "taskProfileRole": "title" }
+    },
+    {
+      "id": "f2",
+      "name": "状态",
+      "type": "select",
+      "options": [
+        { "id": "opt1", "label": "未开始", "color": "#E5E7EB" },
+        { "id": "opt2", "label": "进行中", "color": "#DBEAFE" },
+        { "id": "opt3", "label": "已完成", "color": "#DCFCE7" }
+      ],
+      "property": {
+        "taskProfileRole": "status",
+        "taskProfileCompletedValues": ["opt3"],
+        "taskProfileBlockedValues": [],
+        "taskProfileNotStartedValues": ["opt1"]
+      }
+    },
+    {
+      "id": "f3",
+      "name": "负责人",
+      "type": "member",
+      "property": { "multiple": false, "taskProfileRole": "assignee" }
+    },
+    {
+      "id": "f4",
+      "name": "进度",
+      "type": "progress",
+      "property": { "max": 100, "taskProfileRole": "progress" }
+    },
+    {
+      "id": "f5",
+      "name": "优先级",
+      "type": "rating",
+      "property": { "max": 5, "taskProfileRole": "priority" }
+    },
+    {
+      "id": "f6",
+      "name": "开始时间",
+      "type": "date",
+      "property": { "format": "YYYY-MM-DD", "taskProfileRole": "startDate" }
+    },
+    {
+      "id": "f7",
+      "name": "结束时间",
+      "type": "date",
+      "property": { "format": "YYYY-MM-DD", "taskProfileRole": "dueDate" }
+    },
+    {
+      "id": "f8",
+      "name": "附件",
+      "type": "attachment"
+    }
+  ],
+  "records": [],
+  "views": [
+    {
+      "id": "v1",
+      "name": "表格",
+      "type": "grid",
+      "config": {
+        "toolbar": {
+          "items": ["insertRow", "fields", "filter", "group", "sort", "automations", "share"]
+        },
+        "filters": [],
+        "sorts": [],
+        "groupConfig": { "fieldId": null, "order": "asc" },
+        "hiddenFieldIds": []
+      }
+    },
+    {
+      "id": "v2",
+      "name": "甘特图",
+      "type": "gantt",
+      "config": {
+        "toolbar": {
+          "items": ["insertRow", "viewSettings", "fields", "filter", "group", "sort", "automations", "share"]
+        },
+        "filters": [],
+        "sorts": [],
+        "groupConfig": { "fieldId": null, "order": "asc" },
+        "hiddenFieldIds": [],
+        "ganttConfig": {
+          "startFieldId": "f6",
+          "endFieldId": "f7",
+          "progressFieldId": "f4"
+        }
+      }
+    },
+    {
+      "id": "v3",
+      "name": "看板",
+      "type": "board",
+      "config": {
+        "toolbar": {
+          "items": ["group", "filter", "sort", "share"]
+        },
+        "filters": [],
+        "sorts": [],
+        "groupConfig": { "fieldId": "f2", "order": "asc" },
+        "hiddenFieldIds": []
+      }
+    },
+    {
+      "id": "v4",
+      "name": "日历",
+      "type": "calendar",
+      "config": {
+        "toolbar": {
+          "items": ["insertRow", "viewSettings", "fields", "filter", "sort", "share"]
+        },
+        "filters": [],
+        "sorts": [],
+        "groupConfig": { "fieldId": null, "order": "asc" },
+        "hiddenFieldIds": [],
+        "calendarConfig": {
+          "startFieldId": "f6",
+          "endFieldId": "f7",
+          "weekStartsOn": 1
+        }
+      }
+    }
+  ],
+  "filters": [],
+  "sorts": [],
+  "groupConfig": { "fieldId": null, "order": "asc" },
+  "taskProfile": {
+    "schemaVersion": 1,
+    "titleFieldId": "f1",
+    "statusFieldId": "f2",
+    "assigneeFieldId": "f3",
+    "priorityFieldId": "f5",
+    "startDateFieldId": "f6",
+    "dueDateFieldId": "f7",
+    "progressFieldId": "f4",
+    "parentFieldId": null,
+    "dependencyFieldId": null,
+    "workloadFieldId": null,
+    "completedStatusValues": ["opt3"],
+    "blockedStatusValues": [],
+    "notStartedStatusValues": ["opt1"]
+  }
+}

@@ -1,0 +1,224 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Private source export action smoke test
+        uses: ./.github/actions/export-source
+        with:
+          destination: /tmp/qtable-source-export
+
+      - name: Verify exported source matches checkout
+        run: |
+          test -f /tmp/qtable-source-export/docker-compose.yml
+          test -f /tmp/qtable-source-export/app/main.py
+          test -f /tmp/qtable-source-export/requirements.txt
+          test -f /tmp/qtable-source-export/requirements.in
+          test -f /tmp/qtable-source-export/requirements-audit.txt
+          cmp docker-compose.yml /tmp/qtable-source-export/docker-compose.yml
+          cmp app/main.py /tmp/qtable-source-export/app/main.py
+          cmp requirements.txt /tmp/qtable-source-export/requirements.txt
+          cmp requirements.in /tmp/qtable-source-export/requirements.in
+          cmp requirements-audit.txt /tmp/qtable-source-export/requirements-audit.txt
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip==26.2.1
+          python scripts/check_python_dependency_policy.py
+          python -m pip install -r requirements.txt
+          python -m pip install -r requirements-audit.txt
+
+      - name: Python dependency vulnerability license and SBOM audit
+        run: python scripts/audit_python_dependencies.py --output-dir /tmp/qtable-python-dependencies
+
+      - name: Upload Python dependency evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-dependency-evidence-${{ github.sha }}
+          path: /tmp/qtable-python-dependencies/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Secret and credential scan
+        run: python scripts/check_secrets.py --history
+
+      - name: Open-source readiness contract
+        run: python scripts/check_open_source_readiness.py
+
+      - name: Board backend contract
+        run: python scripts/check_board_contract.py
+
+      - name: Collaboration backend contract
+        run: python scripts/check_collaboration_contract.py
+
+      - name: PostgreSQL migration smoke test
+        env:
+          PYTHONPATH: .
+          DATA_BACKEND: db
+          DATABASE_MODE: postgres
+          POSTGRES_SERVER: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: qtable
+          ATTACHMENT_STORAGE_ENABLED: "true"
+          ATTACHMENT_S3_ENDPOINT: localhost:9001
+          ATTACHMENT_S3_ACCESS_KEY: ci-test-access
+          ATTACHMENT_S3_SECRET_KEY: ci-test-storage-key
+          ATTACHMENT_S3_BUCKET: qtable-ci
+        run: |
+          trap 'docker compose down -v' EXIT
+          docker compose up -d db minio
+          DB_CONTAINER="$(docker compose ps -q db)"
+          MINIO_CONTAINER="$(docker compose ps -q minio)"
+          for i in {1..60}; do
+            STATUS="$(docker inspect --format='{{.State.Health.Status}}' "$DB_CONTAINER")"
+            if [ "$STATUS" = "healthy" ]; then
+              break
+            fi
+            sleep 1
+          done
+          test "$(docker inspect --format='{{.State.Health.Status}}' "$DB_CONTAINER")" = "healthy"
+          for i in {1..60}; do
+            STATUS="$(docker inspect --format='{{.State.Health.Status}}' "$MINIO_CONTAINER")"
+            if [ "$STATUS" = "healthy" ]; then
+              break
+            fi
+            sleep 1
+          done
+          test "$(docker inspect --format='{{.State.Health.Status}}' "$MINIO_CONTAINER")" = "healthy"
+          alembic upgrade head
+          docker compose exec -T db psql -U postgres -d qtable -tAc "SELECT version_num FROM alembic_version"
+          # Keep PostgreSQL async integration files in separate pytest processes.
+          # AsyncSessionLocal owns a pooled asyncpg engine; pytest-asyncio may
+          # create a new event loop per async test, and a pooled connection from
+          # the previous loop cannot be safely reused by the next test.
+          pytest -q tests/test_my_work_postgres.py
+          pytest -q tests/test_board_postgres.py
+          pytest -q tests/test_collaboration_postgres.py
+          pytest -q tests/test_automation_postgres.py
+          pytest -q tests/test_attachment_storage_postgres.py
+          pytest -q tests/test_attachment_upload_orphan_postgres.py
+          pytest -q tests/test_password_reset_postgres.py
+
+      - name: Fresh database migration smoke test
+        env:
+          PYTHONPATH: .
+          DATABASE_MODE: sqlite
+          SQLITE_PATH: /tmp/qtable-alembic-ci.db
+        run: |
+          rm -f "$SQLITE_PATH"
+          alembic upgrade head
+          python scripts/verify_migration.py "$SQLITE_PATH"
+          alembic upgrade head
+          python scripts/verify_migration.py "$SQLITE_PATH"
+
+      - name: Existing database baseline compatibility
+        env:
+          PYTHONPATH: .
+          DATABASE_MODE: sqlite
+          SQLITE_PATH: /tmp/qtable-existing-ci.db
+        run: |
+          rm -f "$SQLITE_PATH"
+          python - <<'PY'
+          import asyncio
+          import os
+          import sqlite3
+          from app.db.init_db import init_models
+
+          asyncio.run(init_models())
+          db = sqlite3.connect(os.environ["SQLITE_PATH"])
+          db.execute("CREATE TABLE migration_sentinel (value TEXT NOT NULL)")
+          db.execute("INSERT INTO migration_sentinel(value) VALUES ('keep-me')")
+          db.commit()
+          db.close()
+          PY
+          alembic upgrade head
+          python scripts/verify_migration.py "$SQLITE_PATH"
+          python - <<'PY'
+          import os
+          import sqlite3
+
+          db = sqlite3.connect(os.environ["SQLITE_PATH"])
+          row = db.execute("SELECT value FROM migration_sentinel").fetchone()
+          db.close()
+          assert row == ("keep-me",), row
+          print("[migration-check] existing database sentinel preserved")
+          PY
+
+      - name: Docker Compose contract
+        env:
+          QTABLE_UI_CONTEXT: .
+          QTABLE_INTERNAL_BIND_HOST: 127.0.0.2
+          QTABLE_UI_BIND_HOST: 127.0.0.3
+          ATTACHMENT_S3_ACCESS_KEY: ci-test-access
+          ATTACHMENT_S3_SECRET_KEY: ci-test-storage-key
+          ATTACHMENT_S3_COMPOSE_ENDPOINT: object-storage.example.internal:9443
+          ATTACHMENT_S3_COMPOSE_SECURE: "true"
+          RESET_PASSWORD_URL_BASE: https://qtable.example.test/reset-password
+          PASSWORD_RESET_FORGOT_EMAIL_LIMIT: "7"
+          SMTP_HOST: smtp.example.internal
+          SMTP_FROM: no-reply@example.test
+        run: |
+          docker compose config --quiet
+          docker compose config --format json > /tmp/qtable-compose.json
+          python - <<'PY'
+          import json
+
+          with open("/tmp/qtable-compose.json", "r", encoding="utf-8") as handle:
+              compose = json.load(handle)
+          environment = compose["services"]["qtable"]["environment"]
+          assert environment["ATTACHMENT_S3_ENDPOINT"] == "object-storage.example.internal:9443", environment
+          assert str(environment["ATTACHMENT_S3_SECURE"]).lower() == "true", environment
+          assert environment["RESET_PASSWORD_URL_BASE"] == "https://qtable.example.test/reset-password", environment
+          assert str(environment["PASSWORD_RESET_DEBUG_TOKEN_ENABLED"]).lower() == "false", environment
+          assert str(environment["PASSWORD_RESET_RATE_LIMIT_ENABLED"]).lower() == "true", environment
+          assert int(environment["PASSWORD_RESET_FORGOT_EMAIL_LIMIT"]) == 7, environment
+          assert environment["SMTP_HOST"] == "smtp.example.internal", environment
+          assert environment["SMTP_FROM"] == "no-reply@example.test", environment
+
+          def host_ips(service_name: str) -> set[str]:
+              ports = compose["services"][service_name].get("ports") or []
+              return {str(port.get("host_ip") or "") for port in ports}
+
+          for service_name in ("db", "redis", "minio", "qtable"):
+              assert host_ips(service_name) == {"127.0.0.2"}, (
+                  service_name,
+                  compose["services"][service_name].get("ports"),
+              )
+          assert host_ips("qtable-ui") == {"127.0.0.3"}, compose["services"]["qtable-ui"].get("ports")
+          print("[compose-check] attachment, password-reset, and safe host-binding contracts preserved")
+          PY
+
+      - name: Run tests
+        env:
+          PYTHONPATH: .
+          DATA_BACKEND: db
+          DATABASE_MODE: sqlite
+          SQLITE_PATH: /tmp/qtable-pytest.db
+        run: |
+          rm -f "$SQLITE_PATH"
+          pytest -q
+
+      - name: Docker image smoke build
+        run: docker build -t qtable-ci:${{ github.sha }} .

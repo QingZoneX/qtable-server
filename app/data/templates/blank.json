@@ -1,0 +1,38 @@
+{
+  "id": "blank",
+  "fields": [
+    {
+      "id": "f1",
+      "name": "文本",
+      "type": "text"
+    }
+  ],
+  "records": [],
+  "views": [
+    {
+      "id": "v1",
+      "name": "表格视图",
+      "type": "grid",
+      "config": {
+        "toolbar": {
+          "items": [
+            "insertRow",
+            "fields",
+            "filter",
+            "group",
+            "sort",
+            "automations",
+            "share"
+          ]
+        },
+        "filters": [],
+        "sorts": [],
+        "groupConfig": {
+          "fieldId": null,
+          "order": "asc"
+        },
+        "hiddenFieldIds": []
+      }
+    }
+  ]
+}

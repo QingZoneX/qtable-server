@@ -1,0 +1,30 @@
+name: Export QTable source
+description: Export the QTable source tree from this exact private-action revision for cross-repository full-stack release gates.
+
+inputs:
+  destination:
+    description: Absolute or workspace-relative destination directory for the exported QTable source tree.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Export exact action revision source tree
+      shell: bash
+      env:
+        QTABLE_EXPORT_DESTINATION: ${{ inputs.destination }}
+      run: |
+        set -euo pipefail
+        repo_root="$(cd "${GITHUB_ACTION_PATH}/../../.." && pwd)"
+        destination="${QTABLE_EXPORT_DESTINATION}"
+        if [ -z "${destination}" ] || [ "${destination}" = "/" ]; then
+          echo "Refusing unsafe export destination: '${destination}'" >&2
+          exit 1
+        fi
+        rm -rf -- "${destination}"
+        mkdir -p -- "${destination}"
+        tar -C "${repo_root}" --exclude='./.git' -cf - . | tar -C "${destination}" -xf -
+        test -f "${destination}/docker-compose.yml"
+        test -f "${destination}/app/main.py"
+        test -f "${destination}/requirements.txt"
+        echo "Exported QTable source from ${GITHUB_ACTION_REPOSITORY} into ${destination}"
