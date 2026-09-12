@@ -102,7 +102,7 @@ jobs:
           labels: |
             org.opencontainers.image.title=QTable
             org.opencontainers.image.description=AI-native open-source project and work management built on multidimensional tables
-            org.opencontainers.image.source=https://github.com/QingZoneX/QTable
+            org.opencontainers.image.source=https://github.com/QingZoneX/qtable-server
             org.opencontainers.image.licenses=Apache-2.0
             org.opencontainers.image.version=${{ steps.identity.outputs.version }}
             org.opencontainers.image.revision=${{ github.sha }}
@@ -118,12 +118,13 @@ jobs:
             -t "$SCAN_IMAGE" .
 
       - name: Block HIGH or CRITICAL container vulnerabilities
-        uses: docker/scout-action@v1
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
-          command: cves
-          image: local://${{ env.SCAN_IMAGE }}
-          only-severities: critical,high
-          exit-code: true
+          image-ref: ${{ env.SCAN_IMAGE }}
+          format: table
+          exit-code: '1'
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
 
       - name: Build and publish multi-arch image
         id: build
@@ -155,7 +156,7 @@ jobs:
             echo "- Digest: \`${{ steps.build.outputs.digest }}\`"
             echo "- Platforms: \`linux/amd64\`, \`linux/arm64\`"
             echo "- Pushed: \`${{ steps.identity.outputs.push }}\`"
-            echo "- HIGH/CRITICAL CVE gate: passed"
+            echo "- HIGH/CRITICAL CVE gate: passed (Trivy)"
             echo "- SBOM: enabled"
             echo "- Provenance: mode=max"
           } >> "$GITHUB_STEP_SUMMARY"
