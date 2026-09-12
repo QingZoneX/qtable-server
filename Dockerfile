@@ -40,9 +40,9 @@ ARG QTABLE_CREATED=1970-01-01T00:00:00Z
 
 LABEL org.opencontainers.image.title="QTable" \
       org.opencontainers.image.description="AI-native open-source project and work management built on multidimensional tables" \
-      org.opencontainers.image.source="https://github.com/QingZoneX/QTable" \
-      org.opencontainers.image.url="https://github.com/QingZoneX/QTable" \
-      org.opencontainers.image.documentation="https://github.com/QingZoneX/QTable#readme" \
+      org.opencontainers.image.source="https://github.com/QingZoneX/qtable-server" \
+      org.opencontainers.image.url="https://github.com/QingZoneX/qtable-server" \
+      org.opencontainers.image.documentation="https://github.com/QingZoneX/qtable-server#readme" \
       org.opencontainers.image.licenses="Apache-2.0" \
       org.opencontainers.image.version="${QTABLE_VERSION}" \
       org.opencontainers.image.revision="${QTABLE_REVISION}" \
