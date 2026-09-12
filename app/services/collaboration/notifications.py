@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
+from app.core.i18n import translate
 from app.models.change_history import ChangeItem, ChangeSet
 from app.models.collaboration import RecordComment, UserNotification
 from app.models.smart_table import WorkspaceItem
@@ -210,7 +211,7 @@ async def serialize_notification(
         "createdAt": notification.created_at.isoformat() if notification.created_at else None,
         "readAt": notification.read_at.isoformat() if notification.read_at else None,
         "accessible": True,
-        "title": "通知",
+        "title": translate("notification.defaultTitle"),
         "summary": "",
         "deepLink": None,
         "payload": {},
@@ -227,8 +228,8 @@ async def serialize_notification(
             base.update(
                 {
                     "accessible": False,
-                    "title": "内容不可访问",
-                    "summary": "该内容已删除或你已无权访问。",
+                    "title": translate("notification.inaccessibleTitle"),
+                    "summary": translate("notification.inaccessibleSummary"),
                     "deepLink": None,
                     "payload": {},
                 }
@@ -262,40 +263,61 @@ async def serialize_notification(
         actor_name = base["actor"]["name"]
         if notification.type == "comment_mention":
             if comment is None or comment.deleted_at is not None:
-                base["summary"] = f"{actor_name} 在一条已删除的评论中提到了你"
+                base["summary"] = translate(
+                    "notification.mentionDeleted",
+                    actor=actor_name,
+                )
             else:
                 preview = str(comment.body or "").replace("\n", " ")[:120]
-                base["summary"] = f"{actor_name} 在评论中提到了你：{preview}"
+                base["summary"] = translate(
+                    "notification.mention",
+                    actor=actor_name,
+                    preview=preview,
+                )
         elif notification.type == "comment_reply":
             if comment is None or comment.deleted_at is not None:
-                base["summary"] = f"{actor_name} 的回复已被删除"
+                base["summary"] = translate(
+                    "notification.replyDeleted",
+                    actor=actor_name,
+                )
             else:
                 preview = str(comment.body or "").replace("\n", " ")[:120]
-                base["summary"] = f"{actor_name} 回复了你的评论：{preview}"
+                base["summary"] = translate(
+                    "notification.reply",
+                    actor=actor_name,
+                    preview=preview,
+                )
         elif notification.type == "task_assigned":
-            base["summary"] = f"{actor_name} 将任务分配给了你"
+            base["summary"] = translate(
+                "notification.taskAssigned",
+                actor=actor_name,
+            )
         elif notification.type == "due_24h":
-            base["summary"] = "任务将在 24 小时内到期"
+            base["summary"] = translate("notification.due24h")
         elif notification.type == "due_3d":
-            base["summary"] = "任务将在 3 天内到期"
+            base["summary"] = translate("notification.due3d")
         elif notification.type == "ai_action_required":
-            base["summary"] = "有一项 AI 操作等待确认"
+            base["summary"] = translate("notification.aiActionRequired")
         elif notification.type == "automation":
-            base["summary"] = str(payload.get("message") or "自动化规则已触发")[:500]
+            base["summary"] = str(
+                payload.get("message") or translate("notification.automation")
+            )[:500]
         elif notification.type == "automation_failed":
-            base["summary"] = "一条自动化规则执行失败"
+            base["summary"] = translate("notification.automationFailed")
         else:
-            base["summary"] = "有新的协作动态"
+            base["summary"] = translate("notification.collaboration")
         base["payload"] = payload
         return base
 
     payload = _payload_dict(notification.payload)
     if notification.type == "automation":
-        base["summary"] = str(payload.get("message") or "自动化规则已触发")[:500]
+        base["summary"] = str(
+            payload.get("message") or translate("notification.automation")
+        )[:500]
     elif notification.type == "automation_failed":
-        base["summary"] = "一条自动化规则执行失败"
+        base["summary"] = translate("notification.automationFailed")
     else:
-        base["summary"] = "有新的协作动态"
+        base["summary"] = translate("notification.collaboration")
     base["payload"] = payload
     return base
 
