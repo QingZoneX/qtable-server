@@ -102,7 +102,7 @@ jobs:
           labels: |
             org.opencontainers.image.title=QTable
             org.opencontainers.image.description=AI-native open-source project and work management built on multidimensional tables
-            org.opencontainers.image.source=https://github.com/QingZoneX/QTable
+            org.opencontainers.image.source=https://github.com/QingZoneX/qtable-server
             org.opencontainers.image.licenses=Apache-2.0
             org.opencontainers.image.version=${{ steps.identity.outputs.version }}
             org.opencontainers.image.revision=${{ github.sha }}
@@ -117,13 +117,21 @@ jobs:
             --build-arg QTABLE_CREATED="${{ steps.identity.outputs.created }}" \
             -t "$SCAN_IMAGE" .
 
-      - name: Block HIGH or CRITICAL container vulnerabilities
-        uses: docker/scout-action@v1
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@e07451d2e059ed86c2870430ea286b3a9e0bf241
         with:
-          command: cves
-          image: local://${{ env.SCAN_IMAGE }}
-          only-severities: critical,high
-          exit-code: true
+          version: v0.74.0
+          cache: true
+
+      - name: Block HIGH or CRITICAL container vulnerabilities
+        shell: bash
+        run: |
+          trivy image \
+            --scanners vuln \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            --no-progress \
+            "$SCAN_IMAGE"
 
       - name: Build and publish multi-arch image
         id: build
@@ -155,7 +163,7 @@ jobs:
             echo "- Digest: \`${{ steps.build.outputs.digest }}\`"
             echo "- Platforms: \`linux/amd64\`, \`linux/arm64\`"
             echo "- Pushed: \`${{ steps.identity.outputs.push }}\`"
-            echo "- HIGH/CRITICAL CVE gate: passed"
+            echo "- HIGH/CRITICAL CVE gate: passed (Trivy v0.74.0)"
             echo "- SBOM: enabled"
             echo "- Provenance: mode=max"
           } >> "$GITHUB_STEP_SUMMARY"
