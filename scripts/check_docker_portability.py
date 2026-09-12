@@ -32,7 +32,7 @@ assert "build-essential" not in runtime_text
 assert "USER qtable" in runtime_text
 assert "chown qtable:qtable /app" in runtime_text
 assert "HEALTHCHECK" in runtime_text
-assert 'org.opencontainers.image.source="https://github.com/QingZoneX/QTable"' in runtime_text
+assert 'org.opencontainers.image.source="https://github.com/QingZoneX/qtable-server"' in runtime_text
 assert 'org.opencontainers.image.licenses="Apache-2.0"' in runtime_text
 assert 'org.opencontainers.image.created="${QTABLE_CREATED}"' in runtime_text
 assert "COPY --chown=qtable:qtable LICENSE NOTICE /usr/share/licenses/qtable/" in runtime_text
@@ -82,9 +82,10 @@ for expected in (
     "docker/login-action@v4",
     "docker/metadata-action@v6",
     "docker/build-push-action@v7",
-    "docker/scout-action@v1",
-    "only-severities: critical,high",
-    "exit-code: true",
+    "aquasecurity/setup-trivy@e07451d2e059ed86c2870430ea286b3a9e0bf241",
+    "version: v0.74.0",
+    "--severity HIGH,CRITICAL",
+    "--exit-code 1",
     "provenance: mode=max",
     "sbom: true",
     "latest=false",
