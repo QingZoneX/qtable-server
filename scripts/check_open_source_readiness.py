@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.1.0-alpha"
+VERSION = "0.1.1-alpha"
 
 REQUIRED = [
     "LICENSE", "NOTICE", "README.md", "CONTRIBUTING.md", "SECURITY.md",
@@ -143,7 +143,7 @@ dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
 for token in [
     "FROM ${PYTHON_IMAGE} AS builder",
     "FROM ${PYTHON_IMAGE} AS runtime",
-    'org.opencontainers.image.source="https://github.com/QingZoneX/QTable"',
+    'org.opencontainers.image.source="https://github.com/QingZoneX/qtable-server"',
     'org.opencontainers.image.licenses="Apache-2.0"',
     'org.opencontainers.image.version="${QTABLE_VERSION}"',
     'org.opencontainers.image.revision="${QTABLE_REVISION}"',
@@ -167,9 +167,10 @@ for token in [
     'docker/setup-buildx-action@v4',
     'docker/metadata-action@v6',
     'docker/build-push-action@v7',
-    'docker/scout-action@v1',
-    'only-severities: critical,high',
-    'exit-code: true',
+    'aquasecurity/trivy-action@v0.35.0',
+    "severity: 'CRITICAL,HIGH'",
+    "exit-code: '1'",
+    "vuln-type: 'os,library'",
     'platforms: linux/amd64,linux/arm64',
     'provenance: mode=max',
     'sbom: true',
