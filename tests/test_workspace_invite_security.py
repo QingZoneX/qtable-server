@@ -101,6 +101,8 @@ async def test_new_user_invite_smtp_failure_rolls_back_user_member_and_token(
     invite_db, monkeypatch
 ):
     db, owner, workspace = invite_db
+    owner_id = owner.id
+    workspace_id = workspace.id
     captured: list[str] = []
     monkeypatch.setattr(workspace_mutations, "_smtp_configured", lambda: True)
 
@@ -114,7 +116,7 @@ async def test_new_user_invite_smtp_failure_rolls_back_user_member_and_token(
         await workspace_mutations.WorkspaceMutations().inviteUserToWorkspace(
             _info(db, owner),
             "failed-member@example.test",
-            workspace.id,
+            workspace_id,
             "editor",
         )
 
@@ -127,8 +129,8 @@ async def test_new_user_invite_smtp_failure_rolls_back_user_member_and_token(
     members = (
         await db.execute(
             select(WorkspaceMember).where(
-                WorkspaceMember.workspace_id == workspace.id,
-                WorkspaceMember.user_id != owner.id,
+                WorkspaceMember.workspace_id == workspace_id,
+                WorkspaceMember.user_id != owner_id,
             )
         )
     ).scalars().all()
