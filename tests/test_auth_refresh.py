@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
+import jwt
 import pytest
-from jose import jwt
 
 from app.api.oauth.endpoints import _pkce_method_allowed, _scope_set, _validated_scope
 from app.api.oauth.pkce import (
