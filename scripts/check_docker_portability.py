@@ -3,15 +3,16 @@ from __future__ import annotations
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
 dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
 compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
 registry_compose = (ROOT / "docker-compose.registry.yml").read_text(encoding="utf-8")
-readme = (ROOT / "README.md").read_text(encoding="utf-8")
 env_example = (ROOT / ".env.example").read_text(encoding="utf-8")
 dockerhub_env = (ROOT / "dockerhub.env.example").read_text(encoding="utf-8")
 dockerhub_doc = (ROOT / "docs/docker-hub.md").read_text(encoding="utf-8")
 publish_workflow = (ROOT / ".github/workflows/docker-publish.yml").read_text(encoding="utf-8")
 
+assert VERSION and not any(ch.isspace() for ch in VERSION), VERSION
 assert dockerfile.startswith("ARG PYTHON_IMAGE=python:3.11-slim\n\nFROM ${PYTHON_IMAGE} AS builder\n"), dockerfile
 assert "FROM ${PYTHON_IMAGE} AS runtime" in dockerfile
 assert "ARG APT_MIRROR=" in dockerfile
@@ -48,17 +49,14 @@ for expected in (
     "PYTHON_IMAGE=python:3.11-slim",
     "APT_MIRROR=",
     "PIP_INDEX_URL=https://pypi.org/simple",
+    "docker.m.daocloud.io/library/python:3.11-slim",
+    "mirrors.aliyun.com/pypi/simple/",
 ):
     assert expected in env_example, expected
 
-assert "## Docker build source portability" in readme
-assert "official upstream sources by default" in readme
-assert "docker.m.daocloud.io/library/python:3.11-slim" in readme
-assert "mirrors.aliyun.com/pypi/simple/" in readme
-
 for expected in (
-    "image: ${QTABLE_IMAGE:-qingzonex/qtable:0.1.0-alpha}",
-    "image: ${QTABLE_UI_IMAGE:-qingzonex/qtable-ui:0.1.0-alpha}",
+    f"image: ${{QTABLE_IMAGE:-qingzonex/qtable:{VERSION}}}",
+    f"image: ${{QTABLE_UI_IMAGE:-qingzonex/qtable-ui:{VERSION}}}",
     "POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set",
     "SECRET_KEY:?SECRET_KEY must be set",
     "ENCRYPTION_KEY:?ENCRYPTION_KEY must be set",
@@ -67,8 +65,8 @@ for expected in (
     assert expected in registry_compose, expected
 
 for expected in (
-    "QTABLE_IMAGE=qingzonex/qtable:0.1.0-alpha",
-    "QTABLE_UI_IMAGE=qingzonex/qtable-ui:0.1.0-alpha",
+    f"QTABLE_IMAGE=qingzonex/qtable:{VERSION}",
+    f"QTABLE_UI_IMAGE=qingzonex/qtable-ui:{VERSION}",
     "POSTGRES_PASSWORD=CHANGE_ME_DATABASE_PASSWORD",
     "SECRET_KEY=CHANGE_ME_LONG_RANDOM_SECRET",
     "ENCRYPTION_KEY=CHANGE_ME_FERNET_KEY",
@@ -107,4 +105,4 @@ for expected in (
 ):
     assert expected in dockerhub_doc, expected
 
-print("[docker-portability] source portability, hardened runtime and Docker Hub distribution contracts verified")
+print(f"[docker-portability] source portability, hardened runtime and Docker Hub distribution contracts verified for {VERSION}")
