@@ -48,7 +48,7 @@ def safe_password_reset_defaults(monkeypatch):
     monkeypatch.setattr(auth_api, "enforce_password_reset_rate_limits", no_rate_limit)
 
 
-async def _create_user(db_session, email: str = "owner@example.test") -> User:
+async def _create_user(db_session, email: str = "owner@example.com") -> User:
     user = User(
         email=email,
         password_hash=auth_api.hash_password("old-password"),
@@ -74,7 +74,7 @@ async def _forgot(db_session, email: str):
 async def test_production_smtp_missing_is_generic_and_does_not_mint_token(db_session):
     await _create_user(db_session)
 
-    response, tasks = await _forgot(db_session, "owner@example.test")
+    response, tasks = await _forgot(db_session, "owner@example.com")
 
     assert response.model_dump(exclude_none=True) == {
         "message": auth_api._PASSWORD_RESET_GENERIC_MESSAGE,
@@ -99,7 +99,7 @@ async def test_production_smtp_failure_never_becomes_response_token_or_sync_late
 
     monkeypatch.setattr(auth_api, "_send_reset_email", failed_delivery)
 
-    response, tasks = await _forgot(db_session, "owner@example.test")
+    response, tasks = await _forgot(db_session, "owner@example.com")
 
     assert response.model_dump(exclude_none=True) == {
         "message": auth_api._PASSWORD_RESET_GENERIC_MESSAGE,
@@ -121,8 +121,8 @@ async def test_production_smtp_failure_never_becomes_response_token_or_sync_late
 async def test_known_and_unknown_accounts_have_same_external_response(db_session):
     await _create_user(db_session)
 
-    known, _ = await _forgot(db_session, "owner@example.test")
-    unknown, _ = await _forgot(db_session, "missing@example.test")
+    known, _ = await _forgot(db_session, "owner@example.com")
+    unknown, _ = await _forgot(db_session, "missing@example.com")
 
     assert known.model_dump(exclude_none=True) == unknown.model_dump(exclude_none=True)
     assert "token" not in known.model_dump(exclude_none=True)
@@ -226,7 +226,7 @@ async def test_endpoint_maps_rate_limit_to_429_with_retry_after(monkeypatch, db_
     monkeypatch.setattr(auth_api, "enforce_password_reset_rate_limits", limited)
 
     with pytest.raises(HTTPException) as exc_info:
-        await _forgot(db_session, "owner@example.test")
+        await _forgot(db_session, "owner@example.com")
     assert exc_info.value.status_code == 429
     assert exc_info.value.headers == {"Retry-After": "42"}
 
@@ -241,7 +241,7 @@ async def test_endpoint_fails_closed_when_rate_limit_backend_is_unavailable(
     monkeypatch.setattr(auth_api, "enforce_password_reset_rate_limits", unavailable)
 
     with pytest.raises(HTTPException) as exc_info:
-        await _forgot(db_session, "owner@example.test")
+        await _forgot(db_session, "owner@example.com")
     assert exc_info.value.status_code == 503
 
 
@@ -314,5 +314,5 @@ def test_smtp_failure_log_never_contains_raw_reset_token(monkeypatch, caplog):
 
     monkeypatch.setattr(auth_api.smtplib, "SMTP", BrokenSMTP)
     with caplog.at_level(logging.WARNING, logger=auth_api.__name__):
-        assert auth_api._send_reset_email("owner@example.test", raw) is False
+        assert auth_api._send_reset_email("owner@example.com", raw) is False
     assert raw not in caplog.text
