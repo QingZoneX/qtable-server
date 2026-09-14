@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.1.0-alpha"
+VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
 
 REQUIRED = [
     "LICENSE", "NOTICE", "README.md", "CONTRIBUTING.md", "SECURITY.md",
@@ -13,7 +13,7 @@ REQUIRED = [
     "docker-compose.yml", "docker-compose.registry.yml", "dockerhub.env.example",
     "alembic.ini", "alembic/env.py", "alembic/versions/0001_open_source_baseline.py",
     ".github/workflows/docker-publish.yml", "docs/docker-hub.md",
-    "scripts/check_docker_portability.py", "docs/releases/v0.1.0-alpha.md",
+    "scripts/check_docker_portability.py", f"docs/releases/v{VERSION}.md",
 ]
 FORBIDDEN_PREFIXES = [".codebuddy/", "deliverables/"]
 FORBIDDEN_EXACT = {
@@ -34,6 +34,9 @@ def tracked() -> set[str]:
     return {p.decode("utf-8") for p in raw.split(b"\0") if p}
 
 
+if not VERSION or any(ch.isspace() for ch in VERSION):
+    fail(f"VERSION must be a non-empty single token, got {VERSION!r}")
+
 files = tracked()
 for path in REQUIRED:
     if path not in files:
@@ -49,19 +52,11 @@ legacy_tables = {p for p in files if p.startswith("app/data/tables/")}
 if legacy_tables != ALLOWED_TABLE_FIXTURES:
     fail(f"unexpected runtime table fixtures remain: {sorted(legacy_tables)}")
 
-version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
-if version != VERSION:
-    fail(f"VERSION must be {VERSION}, got {version!r}")
-
 license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
 if "Apache License" not in license_text or "Version 2.0" not in license_text:
     fail("LICENSE is not Apache License 2.0")
 
-local_markers = [
-    "/" + "Users" + "/",
-    "\\" + "Users" + "\\",
-    "gitee" + "/QSpace",
-]
+local_markers = ["/" + "Users" + "/", "\\" + "Users" + "\\", "gitee" + "/QSpace"]
 for path in sorted(files):
     try:
         text = (ROOT / path).read_bytes().decode("utf-8")
@@ -74,10 +69,7 @@ for path in sorted(files):
 env_example = (ROOT / ".env.example").read_text(encoding="utf-8")
 if "DATABASE_MODE=postgres" not in env_example or "DATA_BACKEND=db" not in env_example:
     fail(".env.example must use the PostgreSQL database backend by default")
-for token in [
-    "QTABLE_INTERNAL_BIND_HOST=127.0.0.1",
-    "QTABLE_UI_BIND_HOST=0.0.0.0",
-]:
+for token in ["QTABLE_INTERNAL_BIND_HOST=127.0.0.1", "QTABLE_UI_BIND_HOST=0.0.0.0"]:
     if token not in env_example:
         fail(f".env.example is missing safe Compose exposure setting: {token}")
 
@@ -93,7 +85,6 @@ if "QTABLE_UI_CONTEXT" not in compose:
     fail("docker-compose.yml must allow the sibling QTableUI context")
 if "DATABASE_MODE: postgres" not in compose or "DATA_BACKEND: db" not in compose:
     fail("docker-compose.yml must use PostgreSQL with the canonical db backend")
-
 for token in [
     '${QTABLE_INTERNAL_BIND_HOST:-127.0.0.1}:${POSTGRES_HOST_PORT:-5432}:5432',
     '${QTABLE_INTERNAL_BIND_HOST:-127.0.0.1}:${REDIS_HOST_PORT:-6379}:6379',
@@ -108,8 +99,8 @@ if '${QTABLE_UI_BIND_HOST:-0.0.0.0}:${QTABLE_UI_PORT:-9100}:9100' not in compose
 
 registry_compose = (ROOT / "docker-compose.registry.yml").read_text(encoding="utf-8")
 for token in [
-    'image: ${QTABLE_IMAGE:-qingzonex/qtable:0.1.0-alpha}',
-    'image: ${QTABLE_UI_IMAGE:-qingzonex/qtable-ui:0.1.0-alpha}',
+    f'image: ${{QTABLE_IMAGE:-qingzonex/qtable:{VERSION}}}',
+    f'image: ${{QTABLE_UI_IMAGE:-qingzonex/qtable-ui:{VERSION}}}',
     "APP_ENV: production",
     'SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set}',
     'ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY must be set}',
@@ -129,8 +120,8 @@ if "  qtable-ui:\n    build:" in registry_compose:
 
 dockerhub_env = (ROOT / "dockerhub.env.example").read_text(encoding="utf-8")
 for token in [
-    "QTABLE_IMAGE=qingzonex/qtable:0.1.0-alpha",
-    "QTABLE_UI_IMAGE=qingzonex/qtable-ui:0.1.0-alpha",
+    f"QTABLE_IMAGE=qingzonex/qtable:{VERSION}",
+    f"QTABLE_UI_IMAGE=qingzonex/qtable-ui:{VERSION}",
     "POSTGRES_PASSWORD=CHANGE_ME_DATABASE_PASSWORD",
     "SECRET_KEY=CHANGE_ME_LONG_RANDOM_SECRET",
     "ENCRYPTION_KEY=CHANGE_ME_FERNET_KEY",
@@ -162,25 +153,13 @@ if "build-essential" in runtime_text:
 
 publish = (ROOT / ".github/workflows/docker-publish.yml").read_text(encoding="utf-8")
 for token in [
-    'docker/login-action@v4',
-    'docker/setup-qemu-action@v4',
-    'docker/setup-buildx-action@v4',
-    'docker/metadata-action@v6',
-    'docker/build-push-action@v7',
-    'aquasecurity/trivy-action@v0.35.0',
-    "severity: 'CRITICAL,HIGH'",
-    "exit-code: '1'",
-    "vuln-type: 'os,library'",
-    'platforms: linux/amd64,linux/arm64',
-    'provenance: mode=max',
-    'sbom: true',
-    'DOCKERHUB_TOKEN',
-    'DOCKERHUB_PUBLISH_ENABLED',
-    "DOCKERHUB_NAMESPACE || 'qingzonex'",
-    'latest=false',
-    "!contains(steps.identity.outputs.version, '-')",
-    'tag_version="${GITHUB_REF_NAME#v}"',
-    'QTABLE_REVISION=${{ github.sha }}',
+    'docker/login-action@v4', 'docker/setup-qemu-action@v4', 'docker/setup-buildx-action@v4',
+    'docker/metadata-action@v6', 'docker/build-push-action@v7', 'aquasecurity/trivy-action@v0.35.0',
+    "severity: 'CRITICAL,HIGH'", "exit-code: '1'", "vuln-type: 'os,library'",
+    'platforms: linux/amd64,linux/arm64', 'provenance: mode=max', 'sbom: true',
+    'DOCKERHUB_TOKEN', 'DOCKERHUB_PUBLISH_ENABLED', "DOCKERHUB_NAMESPACE || 'qingzonex'",
+    'latest=false', "!contains(steps.identity.outputs.version, '-')",
+    'tag_version="${GITHUB_REF_NAME#v}"', 'QTABLE_REVISION=${{ github.sha }}',
     'QTABLE_CREATED=${{ steps.identity.outputs.created }}',
 ]:
     if token not in publish:
@@ -207,11 +186,11 @@ for path in sorted(p for p in files if p.startswith("app/data/") and p.endswith(
 
 readme = (ROOT / "README.md").read_text(encoding="utf-8")
 for token in [
-    "v0.1.0-alpha",
+    VERSION,
     "docker compose up --build -d",
     "docker-compose.registry.yml",
-    "qingzonex/qtable:0.1.0-alpha",
-    "qingzonex/qtable-ui:0.1.0-alpha",
+    f"qingzonex/qtable:{VERSION}",
+    f"qingzonex/qtable-ui:{VERSION}",
     "alembic upgrade head",
     "SECURITY.md",
     "CONTRIBUTING.md",
@@ -219,4 +198,4 @@ for token in [
     if token not in readme:
         fail(f"README is missing required release/setup token: {token}")
 
-print("[open-source-readiness] OK")
+print(f"[open-source-readiness] OK - public contract verified for {VERSION}")
