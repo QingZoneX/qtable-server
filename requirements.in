@@ -8,7 +8,7 @@
 # transition and is checked for semantic drift against this file.
 
 fastapi>=0.109.0
-uvicorn[standard]>=0.27.0
+uvicorn[standard]>=0.52.4
 strawberry-graphql[fastapi]>=0.219.0
 sqlalchemy>=2.0.25
 asyncpg>=0.29.0
