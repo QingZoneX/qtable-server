@@ -111,7 +111,14 @@ jobs:
       - name: Build local image for vulnerability gate
         shell: bash
         run: |
+          # The release image is deliberately built from the official upstream
+          # sources. The Dockerfile defaults to reachable mirrors so that
+          # argument-less builds (Rainbond source builds) work on restricted
+          # networks; publication re-asserts the official sources here.
           docker build \
+            --build-arg PYTHON_IMAGE=python:3.11-slim \
+            --build-arg APT_MIRROR= \
+            --build-arg PIP_INDEX_URL=https://pypi.org/simple \
             --build-arg QTABLE_VERSION="${{ steps.identity.outputs.version }}" \
             --build-arg QTABLE_REVISION="${GITHUB_SHA}" \
             --build-arg QTABLE_CREATED="${{ steps.identity.outputs.created }}" \
@@ -137,6 +144,9 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           annotations: ${{ steps.meta.outputs.annotations }}
           build-args: |
+            PYTHON_IMAGE=python:3.11-slim
+            APT_MIRROR=
+            PIP_INDEX_URL=https://pypi.org/simple
             QTABLE_VERSION=${{ steps.identity.outputs.version }}
             QTABLE_REVISION=${{ github.sha }}
             QTABLE_CREATED=${{ steps.identity.outputs.created }}

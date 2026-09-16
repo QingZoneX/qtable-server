@@ -199,6 +199,22 @@ The canonical Compose stack follows a least-privilege host-exposure model. Postg
 
 Do not expose PostgreSQL, Redis, MinIO administration/API ports or the backend API directly to the public Internet merely to make the UI reachable.
 
+## Docker build source portability
+
+The backend Docker image uses reachable mirrors as the build default: `PYTHON_IMAGE=docker.m.daocloud.io/library/python:3.11-slim`, the Debian sources shipped by that image are rewritten to `mirrors.aliyun.com`, and `PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/`. The default path has to build with no build arguments at all because Rainbond source builds run a bare `docker build` and cannot select an alternate Dockerfile. `requirements.txt` is copied and installed before application source so source-only changes keep Docker's dependency layer cacheable.
+
+The portable official-upstream path is one explicit override away, and it is what the published Docker Hub images use:
+
+```bash
+docker build \
+  --build-arg PYTHON_IMAGE=python:3.11-slim \
+  --build-arg APT_MIRROR= \
+  --build-arg PIP_INDEX_URL=https://pypi.org/simple \
+  -t qtable:local .
+```
+
+`.github/workflows/docker-publish.yml` and `.github/workflows/docker-portability.yml` pass exactly those arguments, so release images and the portability gate never depend on a regional mirror. `docker compose build qtable` forwards the same three values from `.env` (documented in `.env.example`), which keeps the official-source path for Compose users; on a constrained network set them to the mirror values above or remove them to fall back to the Dockerfile defaults.
+
 ## Database migrations
 
 QTable carries Alembic migrations. For a fresh database:

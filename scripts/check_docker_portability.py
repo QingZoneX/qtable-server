@@ -4,23 +4,37 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+assert VERSION and not any(ch.isspace() for ch in VERSION), VERSION
 dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
 compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
 registry_compose = (ROOT / "docker-compose.registry.yml").read_text(encoding="utf-8")
+readme = (ROOT / "README.md").read_text(encoding="utf-8")
 env_example = (ROOT / ".env.example").read_text(encoding="utf-8")
 dockerhub_env = (ROOT / "dockerhub.env.example").read_text(encoding="utf-8")
 dockerhub_doc = (ROOT / "docs/docker-hub.md").read_text(encoding="utf-8")
 publish_workflow = (ROOT / ".github/workflows/docker-publish.yml").read_text(encoding="utf-8")
 
-assert VERSION and not any(ch.isspace() for ch in VERSION), VERSION
-assert dockerfile.startswith("ARG PYTHON_IMAGE=python:3.11-slim\n\nFROM ${PYTHON_IMAGE} AS builder\n"), dockerfile
+# 两条构建路径都必须被固定住：
+# 1) 受限网络（Rainbond 源码构建）：它执行的是不带任何 --build-arg 的
+#    `docker build`，且无法在构建源里选择其它 Dockerfile，所以默认值必须是
+#    公网可达的镜像源；
+# 2) 可移植的官方上游路径：必须仍能由构建参数显式恢复，发布流程与 OSS 本地
+#    构建走这条，Dockerfile 头部注释是它的文档入口。
+assert dockerfile.startswith("# 镜像源默认值面向受限网络"), dockerfile
+assert "ARG PYTHON_IMAGE=docker.m.daocloud.io/library/python:3.11-slim" in dockerfile
+assert "ARG APT_MIRROR=mirrors.aliyun.com" in dockerfile
+assert "ARG PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/" in dockerfile
+assert "FROM ${PYTHON_IMAGE} AS builder" in dockerfile
 assert "FROM ${PYTHON_IMAGE} AS runtime" in dockerfile
-assert "ARG APT_MIRROR=" in dockerfile
-assert "ARG PIP_INDEX_URL=https://pypi.org/simple" in dockerfile
+assert dockerfile.index(
+    "ARG PYTHON_IMAGE=docker.m.daocloud.io/library/python:3.11-slim"
+) < dockerfile.index("FROM ${PYTHON_IMAGE} AS builder"), (
+    "PYTHON_IMAGE 是全局 ARG，必须声明在第一个 FROM 之前，否则 FROM 取不到覆盖值"
+)
+assert "--build-arg PYTHON_IMAGE=python:3.11-slim" in dockerfile
+assert "--build-arg PIP_INDEX_URL=https://pypi.org/simple" in dockerfile
 assert 'if [ -n "$APT_MIRROR" ]' in dockerfile
 assert '"$VIRTUAL_ENV/bin/pip" install --index-url "$PIP_INDEX_URL" -r requirements.txt' in dockerfile
-assert "docker.m.daocloud.io" not in dockerfile
-assert "mirrors.aliyun.com" not in dockerfile
 
 requirements_index = dockerfile.index("COPY requirements.txt ./")
 requirements_install = dockerfile.index('"$VIRTUAL_ENV/bin/pip" install --index-url "$PIP_INDEX_URL" -r requirements.txt')
@@ -53,6 +67,12 @@ for expected in (
     "mirrors.aliyun.com/pypi/simple/",
 ):
     assert expected in env_example, expected
+
+assert "## Docker build source portability" in readme
+assert "reachable mirrors as the build default" in readme
+assert "docker.m.daocloud.io/library/python:3.11-slim" in readme
+assert "mirrors.aliyun.com/pypi/simple/" in readme
+assert "--build-arg PYTHON_IMAGE=python:3.11-slim" in readme
 
 for expected in (
     f"image: ${{QTABLE_IMAGE:-qingzonex/qtable:{VERSION}}}",

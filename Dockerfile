@@ -1,9 +1,16 @@
-ARG PYTHON_IMAGE=python:3.11-slim
+# 镜像源默认值面向受限网络：Rainbond 源码构建执行的是**不带任何 --build-arg**
+# 的 `docker build`，且它的组件「构建源」不提供选择 Dockerfile 文件的入口，
+# 所以官方上游源不能作为默认值，否则构建会在 load metadata 阶段直接超时。
+# 需要可移植的官方上游源（OSS 路径）时，用构建参数显式恢复：
+#   --build-arg PYTHON_IMAGE=python:3.11-slim
+#   --build-arg APT_MIRROR=
+#   --build-arg PIP_INDEX_URL=https://pypi.org/simple
+ARG PYTHON_IMAGE=docker.m.daocloud.io/library/python:3.11-slim
 
 FROM ${PYTHON_IMAGE} AS builder
 
-ARG APT_MIRROR=
-ARG PIP_INDEX_URL=https://pypi.org/simple
+ARG APT_MIRROR=mirrors.aliyun.com
+ARG PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -33,7 +40,7 @@ RUN python -m venv "$VIRTUAL_ENV" \
 
 FROM ${PYTHON_IMAGE} AS runtime
 
-ARG APT_MIRROR=
+ARG APT_MIRROR=mirrors.aliyun.com
 ARG QTABLE_VERSION=0.0.0-dev
 ARG QTABLE_REVISION=unknown
 ARG QTABLE_CREATED=1970-01-01T00:00:00Z
