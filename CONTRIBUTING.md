@@ -32,7 +32,7 @@ DATABASE_MODE=sqlite SQLITE_PATH=/tmp/qtable-pytest.db pytest -q
 
 If PostgreSQL is intentionally unavailable for application development, use `.env.sqlite.example` as an explicit lightweight fallback. Do not add automatic PostgreSQL-to-SQLite failover.
 
-The frontend lives in `QingZoneX/QTableUI`.
+The frontend lives in `QingZoneX/qtable-web`.
 
 ## Engineering invariants
 
