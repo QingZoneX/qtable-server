@@ -36,7 +36,7 @@ def _sse_event(payload: dict) -> str:
     return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
-def _iter_text_chunks(text: str, chunk_size: int = 24):
+def _iter_text_chunks(text: str, chunk_size: int = 1):
     if not text:
         return
     for index in range(0, len(text), chunk_size):

@@ -4,9 +4,9 @@ All notable changes to QTable will be documented here.
 
 ## [Unreleased]
 
-### Planned `0.1.0-alpha` Open Source Preview
+### Planned `0.1.2-alpha` Open Source Preview
 
-The `v0.1.0-alpha` version metadata and draft release notes are being prepared, but the release has **not** been published yet. The final version entry and release date must only be cut after the exact QTable/QTableUI revisions pass their real CI and full-stack release gates and the final open-source verification is complete.
+The `v0.1.2-alpha` version metadata and draft release notes are being prepared, but the release has **not** been published yet. The final version entry and release date must only be cut after the exact QTable/QTableUI revisions pass their real CI and full-stack release gates and the final open-source verification is complete.
 
 ### Included in the current release candidate
 

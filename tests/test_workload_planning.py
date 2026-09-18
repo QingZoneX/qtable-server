@@ -380,7 +380,13 @@ async def test_preview_estimates_visible_tasks_without_mutating_qtable(
     workload_db,
     monkeypatch,
 ):
-    monkeypatch.setattr(estimate_workload_service, "run", fake_estimate_run)
+    estimate_requests: list[EstimateWorkloadRequest] = []
+
+    async def capture_estimate_request(db, user_id: int, request: EstimateWorkloadRequest):
+        estimate_requests.append(request)
+        return await fake_estimate_run(db, user_id, request)
+
+    monkeypatch.setattr(estimate_workload_service, "run", capture_estimate_request)
 
     fields_before = (
         await workload_db.execute(
@@ -449,6 +455,11 @@ async def test_preview_estimates_visible_tasks_without_mutating_qtable(
         ).scalars().all()
     )
     assert {row.status for row in estimate_rows} == {"previewed"}
+    assert [request.table_ids for request in estimate_requests] == [
+        ["tasks"],
+        ["tasks"],
+        ["tasks"],
+    ]
 
 
 @pytest.mark.asyncio

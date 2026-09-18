@@ -403,8 +403,10 @@ class StructuredOutputService:
             output_type=StructuredOutputResult,
             system_prompt=self._build_system_prompt(request),
             model_settings=OpenAIChatModelSettings(temperature=0.1),
-            output_retries=request.retry.max_output_retries,
-            tool_retries=request.retry.max_tool_retries,
+            retries={
+                "output": request.retry.max_output_retries,
+                "tools": request.retry.max_tool_retries,
+            },
         )
 
         @agent.instructions
@@ -636,7 +638,7 @@ class StructuredOutputService:
         result = await agent.run(
             self._build_user_prompt(deps.request),
             deps=deps,
-            output_retries=deps.request.retry.max_output_retries,
+            retries={"output": deps.request.retry.max_output_retries},
         )
         structured = result.output
         validation = self._validation_report(
@@ -788,7 +790,7 @@ class StructuredOutputService:
                 async with agent.run_stream(
                     self._build_user_prompt(request),
                     deps=deps,
-                    output_retries=request.retry.max_output_retries,
+                    retries={"output": request.retry.max_output_retries},
                 ) as result:
                     async for partial in result.stream_output(debounce_by=0.05):
                         await self._emit_event(

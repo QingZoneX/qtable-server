@@ -763,9 +763,10 @@ class ToolRouterService:
         # 因此 pydantic_ai 发送的是 tool_choice='auto'，V4 原生支持。
         model_settings = OpenAIChatModelSettings(temperature=0.2)
 
-        # V4 模型输出稳定性不如 chat 模型，需要更多 output_retries
+        # V4 模型输出稳定性不如 chat 模型，需要更多输出重试。
         # 避免 "Exceeded maximum output retries (1)" 错误
         output_retries = 5 if is_v4 else 1
+        tool_retries = max(1, min(request.tool_context.retry_policy.max_attempts, 2))
         logger.debug(
             "_build_agent: model=%s, is_v4=%s, output_retries=%d",
             model_name, is_v4, output_retries,
@@ -777,8 +778,7 @@ class ToolRouterService:
             output_type=AgentStructuredOutput,
             system_prompt=ROUTER_SYSTEM_PROMPT,
             model_settings=model_settings,
-            output_retries=output_retries,
-            tool_retries=max(1, min(request.tool_context.retry_policy.max_attempts, 2)),
+            retries={"output": output_retries, "tools": tool_retries},
             tools=tool_adapter_registry.build_pydantic_ai_tools(
                 run_context_annotation=RunContext[AgentRuntimeDeps],
                 invoke_handler=self._invoke_tool_spec,

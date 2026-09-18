@@ -25,4 +25,4 @@ Describe what changes and why.
 
 ## Release impact
 
-Describe any effect on self-hosting, configuration, release notes, or `v0.1.0-alpha` readiness.
+Describe any effect on self-hosting, configuration, release notes, or `v0.1.2-alpha` readiness.

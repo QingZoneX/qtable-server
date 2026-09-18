@@ -4,6 +4,7 @@ from typing import Optional
 
 import strawberry
 from graphql import GraphQLError
+from sqlalchemy.exc import DBAPIError, OperationalError
 from strawberry.scalars import JSON
 from strawberry.types import Info
 
@@ -64,6 +65,12 @@ class WorkloadPlanningMutations:
             )
         except (WorkloadPlanningError, PermissionError, ValueError) as exc:
             raise GraphQLError(str(exc)) from exc
+        except (DBAPIError, OperationalError) as exc:
+            if "recovery mode" in str(exc).lower():
+                raise GraphQLError(
+                    "数据库正在恢复，暂时无法执行工作量预估；请稍后重试。"
+                ) from exc
+            raise
 
     @strawberry.mutation(name="applyWorkloadPlanning")
     async def apply_workload_planning(

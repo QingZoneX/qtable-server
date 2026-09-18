@@ -851,7 +851,7 @@ class ProjectStewardService:
                     "禁止新增、改写或补充事实。优先选择最能回答问题、风险最高且证据最直接的结论。"
                 ),
                 model_settings=OpenAIChatModelSettings(temperature=0.0),
-                output_retries=2,
+                retries={"output": 2},
             )
             catalog = [
                 {

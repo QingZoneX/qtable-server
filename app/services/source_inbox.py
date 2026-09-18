@@ -589,7 +589,7 @@ class SourceInboxService:
                 output_type=SourceInboxAiSuggestion,
                 system_prompt=AI_SYSTEM_PROMPT,
                 model_settings=OpenAIChatModelSettings(temperature=0.1),
-                output_retries=2,
+                retries={"output": 2},
             )
             context = {
                 "source": {

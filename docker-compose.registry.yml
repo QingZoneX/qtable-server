@@ -61,7 +61,7 @@ services:
     restart: unless-stopped
 
   qtable:
-    image: ${QTABLE_IMAGE:-qingzonex/qtable:0.1.0-alpha}
+    image: ${QTABLE_IMAGE:-qingzonex/qtable:0.1.2-alpha}
     environment:
       # Registry distribution is a production deployment path. Keep this fixed so
       # copying the development-oriented .env.example cannot weaken startup checks.
@@ -123,7 +123,7 @@ services:
     restart: unless-stopped
 
   qtable-ui:
-    image: ${QTABLE_UI_IMAGE:-qingzonex/qtable-ui:0.1.0-alpha}
+    image: ${QTABLE_UI_IMAGE:-qingzonex/qtable-ui:0.1.2-alpha}
     environment:
       PORT: 9100
       QTABLE_HOST: qtable

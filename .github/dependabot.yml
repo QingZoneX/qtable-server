@@ -11,6 +11,13 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      # pydantic-ai 2.x removed the legacy Agent retry kwargs used by
+      # app/services/ai_tool_router.py. Re-enable major updates after the
+      # router is migrated to Agent(retries={"output": ..., "tools": ...}).
+      - dependency-name: "pydantic-ai-slim"
+        update-types:
+          - "version-update:semver-major"
   - package-ecosystem: github-actions
     directory: "/"
     schedule:

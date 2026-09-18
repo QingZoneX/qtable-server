@@ -2,7 +2,7 @@
 
 > AI-native, open-source project and work management built on multidimensional tables.
 
-**Status:** public open-source Alpha (`0.1.0-alpha`). The repositories are public and ready for evaluation and contribution; the first verified release tag and release artifacts remain gated by CI and release verification.
+**Status:** public open-source Alpha (`0.1.2-alpha`). The repositories are public and ready for evaluation and contribution; the first verified release tag and release artifacts remain gated by CI and release verification.
 
 QTable combines flexible tables, multiple project views, dashboards, permissions, automation and AI workflows. AI changes follow **Preview → Confirm → Apply** and reuse the same Table / View / Dashboard / Permission models as manual work.
 
@@ -177,8 +177,8 @@ Open <http://localhost:9100>.
 Release workflows are prepared for the following application images:
 
 ```text
-qingzonex/qtable:0.1.0-alpha
-qingzonex/qtable-ui:0.1.0-alpha
+qingzonex/qtable:0.1.2-alpha
+qingzonex/qtable-ui:0.1.2-alpha
 ```
 
 Treat an image as an official release artifact only after the corresponding verified tag has passed the release gates. Prerelease versions deliberately do not receive the `latest` tag.
@@ -292,7 +292,7 @@ The public roadmap is maintained through the project documentation and GitHub Is
 
 ## Release status
 
-QTable is now developed in public under the QingZoneX organization. `0.1.0-alpha` remains a prerelease line: repository visibility does not by itself make a commit, Docker image or tag an official release artifact.
+QTable is now developed in public under the QingZoneX organization. `0.1.2-alpha` remains a prerelease line: repository visibility does not by itself make a commit, Docker image or tag an official release artifact.
 
 A release becomes official only when the exact server and web revisions pass their CI and full-stack release gates and the corresponding verified tag/release is published. Draft release notes remain under [`docs/releases/`](docs/releases/).
 

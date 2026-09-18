@@ -124,6 +124,10 @@ class Settings(BaseSettings):
     CONTEXT_MAX_CONVERSATION_MESSAGES: int = 20
     CONTEXT_COMPRESSION_CHAR_BUDGET: int = 6000
     CONTEXT_TABLE_SAMPLE_LIMIT: int = 12
+    # Workload planning can estimate independent tasks concurrently. Keep the
+    # default conservative so one interactive request cannot exhaust the AI
+    # provider or database connection pool.
+    AI_WORKLOAD_MAX_CONCURRENCY: int = Field(default=4, ge=1, le=10)
 
     # Security
     SECRET_KEY: str = "YOUR_SUPER_SECRET_KEY_CHANGE_ME"

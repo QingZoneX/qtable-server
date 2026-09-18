@@ -103,14 +103,19 @@ jobs:
           import json
           with open('/tmp/qtable-registry-compose.json', encoding='utf-8') as handle:
               config = json.load(handle)
-          assert config['services']['qtable']['image'] == 'qingzonex/qtable:0.1.0-alpha', config['services']['qtable']['image']
-          assert config['services']['qtable-ui']['image'] == 'qingzonex/qtable-ui:0.1.0-alpha', config['services']['qtable-ui']['image']
+          assert config['services']['qtable']['image'] == 'qingzonex/qtable:0.1.2-alpha', config['services']['qtable']['image']
+          assert config['services']['qtable-ui']['image'] == 'qingzonex/qtable-ui:0.1.2-alpha', config['services']['qtable-ui']['image']
           assert config['services']['qtable']['environment']['APP_ENV'] == 'production'
           print('[docker-portability] registry consumer compose verified')
           PY
 
       - name: Build backend with official defaults
-        run: docker build -t qtable-portability:${{ github.sha }} .
+        run: |
+          docker build \
+            --build-arg PYTHON_IMAGE=python:3.11-slim \
+            --build-arg APT_MIRROR= \
+            --build-arg PIP_INDEX_URL=https://pypi.org/simple \
+            -t qtable-portability:${{ github.sha }} .
 
       - name: Verify runtime hardening metadata
         run: |

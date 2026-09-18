@@ -761,8 +761,10 @@ class EstimateWorkloadService:
             output_type=EstimateWorkloadResult,
             system_prompt=self._build_system_prompt(request, agent_context, history),
             model_settings=OpenAIChatModelSettings(temperature=0.15),
-            output_retries=request.retry.max_output_retries,
-            tool_retries=request.retry.max_tool_retries,
+            retries={
+                "output": request.retry.max_output_retries,
+                "tools": request.retry.max_tool_retries,
+            },
         )
 
         @agent.instructions
@@ -900,7 +902,7 @@ class EstimateWorkloadService:
                 result = await agent.run(
                     self._build_user_prompt(request, history, agent_context),
                     deps=deps,
-                    output_retries=request.retry.max_output_retries,
+                    retries={"output": request.retry.max_output_retries},
                 )
                 normalized = self._normalize_result(result.output, history, agent_context)
                 persisted = bool(request.persist_result and not request.dry_run)

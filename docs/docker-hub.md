@@ -11,7 +11,7 @@ The namespace can be overridden in the GitHub publishing workflows through the `
 
 For the alpha channel the canonical tags are:
 
-- `0.1.0-alpha` from Git tag `v0.1.0-alpha`
+- `0.1.2-alpha` from Git tag `v0.1.2-alpha`
 - `sha-<short commit>`
 - moving `alpha` channel tag
 

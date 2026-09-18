@@ -13,7 +13,9 @@ redis>=8.1.0
 websockets>=12.0
 pydantic>=2.6.0
 pydantic-settings>=2.1.0
-pydantic-ai-slim[openai]>=2.40.0
+# pydantic-ai 2.x removed Agent(output_retries=..., tool_retries=...).
+# Keep the v1 compatibility window until ai_tool_router is migrated to Agent(retries=...).
+pydantic-ai-slim[openai]>=1.107.1,<2.0.0
 langgraph>=0.2.0
 langgraph-checkpoint>=0.1.0
 python-dotenv>=1.2.3

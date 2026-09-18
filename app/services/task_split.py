@@ -665,8 +665,10 @@ class TaskSplitService:
             output_type=TaskSplitPlan,
             system_prompt=self._build_system_prompt(request, agent_context, table_schemas),
             model_settings=OpenAIChatModelSettings(temperature=0.2),
-            output_retries=request.retry.max_output_retries,
-            tool_retries=request.retry.max_tool_retries,
+            retries={
+                "output": request.retry.max_output_retries,
+                "tools": request.retry.max_tool_retries,
+            },
         )
 
         @agent.instructions
@@ -825,7 +827,7 @@ class TaskSplitService:
                 result = await agent.run(
                     self._build_user_prompt(request, agent_context),
                     deps=deps,
-                    output_retries=request.retry.max_output_retries,
+                    retries={"output": request.retry.max_output_retries},
                 )
                 plan = self._normalize_plan(result.output, request)
                 persisted = bool(request.auto_create_records and not request.dry_run)

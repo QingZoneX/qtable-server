@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import asyncio
 import json
 import math
 import uuid
@@ -10,6 +11,8 @@ from typing import Any, Iterable, Mapping, Optional
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.session import AsyncSessionLocal
+from app.core.config import settings
 from app.models.change_history import ChangeSet
 from app.models.estimate_workload import WorkloadEstimateRun
 from app.models.smart_table import TableField, TableRecord, WorkspaceItem
@@ -534,7 +537,10 @@ class WorkloadPlanningService:
         task_results: list[dict[str, Any]] = []
         estimate_ids: list[str] = []
         try:
-            for record_id in selected_ids:
+            async def estimate_task(
+                record_id: str,
+                estimate_db: AsyncSession,
+            ) -> tuple[str, str, Any]:
                 record = visible_records[record_id]
                 title = str(record.get(title_field.id) or record_id).strip()
                 description = (
@@ -552,7 +558,12 @@ class WorkloadPlanningService:
                     dryRun=False,
                     workspaceId=request.workspace_id,
                     projectId=None,
-                    tableIds=[],
+                    # The estimate Agent builds an access-checked table
+                    # context and may call its table-context tool. Passing an
+                    # empty scope made that tool infer a target without the
+                    # caller's verified table context, causing false "No
+                    # access" errors for otherwise authorized users.
+                    tableIds=[request.table_id],
                     taskId=record_id,
                     businessDomain=request.business_domain,
                     qualityBar=request.quality_bar,
@@ -562,7 +573,7 @@ class WorkloadPlanningService:
                     ),
                 )
                 response = await estimate_workload_service.run(
-                    db=db,
+                    db=estimate_db,
                     user_id=user_id,
                     request=estimate_request,
                 )
@@ -570,6 +581,37 @@ class WorkloadPlanningService:
                     raise WorkloadPlanningError(
                         str((response.error or {}).get("message") or f"Estimate failed for task {title}")
                     )
+                return record_id, title, response
+
+            # Each model estimate opens its own database session. SQLAlchemy
+            # sessions are not safe to share across concurrent tasks, so the
+            # request session remains dedicated to the final batch write.
+            # SQLite test/local sessions retain deterministic sequential work.
+            bind = db.get_bind()
+            can_parallelize = bind.dialect.name == "postgresql"
+            concurrency = min(
+                int(request.parallel_streams or 1),
+                settings.AI_WORKLOAD_MAX_CONCURRENCY,
+            )
+            if can_parallelize and concurrency > 1:
+                semaphore = asyncio.Semaphore(concurrency)
+
+                async def estimate_with_own_session(record_id: str):
+                    async with semaphore:
+                        async with AsyncSessionLocal() as estimate_db:
+                            return await estimate_task(record_id, estimate_db)
+
+                estimates = await asyncio.gather(
+                    *(estimate_with_own_session(record_id) for record_id in selected_ids)
+                )
+            else:
+                estimates = [
+                    await estimate_task(record_id, db)
+                    for record_id in selected_ids
+                ]
+
+            for record_id, title, response in estimates:
+                record = visible_records[record_id]
                 estimate_ids.append(response.estimate_id)
                 estimate_row = await db.get(WorkloadEstimateRun, response.estimate_id)
                 if estimate_row:
