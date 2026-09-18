@@ -125,7 +125,7 @@ jobs:
             -t "$SCAN_IMAGE" .
 
       - name: Block HIGH or CRITICAL container vulnerabilities
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.SCAN_IMAGE }}
           format: table
