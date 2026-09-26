@@ -22,10 +22,11 @@ DeepSeek V4 / V4.1 模型兼容性辅助模块。
 from __future__ import annotations
 
 import logging
-from typing import Any
+from dataclasses import replace
 
 from openai import AsyncOpenAI
 from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.profiles.openai import OpenAIModelProfile
 from pydantic_ai.providers.deepseek import DeepSeekProvider
 
 logger = logging.getLogger(__name__)
@@ -80,27 +81,28 @@ def create_deepseek_client(
     )
 
 
-def _build_current_flash_profile(provider: DeepSeekProvider, model_name: str) -> dict[str, Any] | None:
+def _build_current_flash_profile(
+    provider: DeepSeekProvider,
+    model_name: str,
+) -> OpenAIModelProfile | None:
     """补齐 pydantic-ai 1.x 对 ``deepseek-flash`` V4.1 别名的 profile 识别。"""
     profile = provider.model_profile(model_name)
     if profile is None:
         return None
 
+    openai_profile = OpenAIModelProfile.from_profile(profile)
     if model_name.strip().lower() != DEEPSEEK_FLASH_MODEL:
-        return profile
+        return openai_profile
 
-    # pydantic-ai predates the V4.1 alias and only treats
-    # ``deepseek-v4-*`` as reasoning-capable / incompatible with
-    # tool_choice="required". Preserve every other DeepSeek profile field and
-    # override only the two alias-sensitive capabilities.
-    # Model profiles are TypedDict values in pydantic-ai 2.x. They cannot be
-    # used with isinstance() or dataclasses.replace(); copy and override the
-    # two alias-sensitive capabilities instead.
-    return {
-        **dict(profile),
-        "supports_thinking": True,
-        "openai_supports_tool_choice_required": False,
-    }
+    # QTable intentionally stays on pydantic-ai 1.x until the Agent retry API
+    # migration is complete. In 1.x model profiles are dataclasses, so preserve
+    # the resolved DeepSeek/OpenAI fields with dataclasses.replace and override
+    # only the two alias-sensitive capabilities.
+    return replace(
+        openai_profile,
+        supports_thinking=True,
+        openai_supports_tool_choice_required=False,
+    )
 
 
 def build_deepseek_model(

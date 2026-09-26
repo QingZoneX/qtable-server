@@ -16,10 +16,10 @@ def test_current_deepseek_flash_gets_v4_profile():
         model_name="deepseek-flash",
     )
 
-    assert model.profile["supports_thinking"] is True
-    assert model.profile["openai_chat_thinking_field"] == "reasoning_content"
-    assert model.profile["openai_chat_send_back_thinking_parts"] == "field"
-    assert model.profile["openai_supports_tool_choice_required"] is False
+    assert model.profile.supports_thinking is True
+    assert model.profile.openai_chat_thinking_field == "reasoning_content"
+    assert model.profile.openai_chat_send_back_thinking_parts == "field"
+    assert model.profile.openai_supports_tool_choice_required is False
 
 
 def test_legacy_v4_aliases_remain_supported():

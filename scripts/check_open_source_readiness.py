@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -154,8 +155,8 @@ if "build-essential" in runtime_text:
 publish = (ROOT / ".github/workflows/docker-publish.yml").read_text(encoding="utf-8")
 for token in [
     'docker/login-action@v4', 'docker/setup-qemu-action@v4', 'docker/setup-buildx-action@v4',
-    'docker/metadata-action@v6', 'docker/build-push-action@v7', 'aquasecurity/trivy-action@v0.35.0',
-    "severity: 'CRITICAL,HIGH'", "exit-code: '1'", "vuln-type: 'os,library'",
+    'docker/metadata-action@v6', 'docker/build-push-action@v7',
+    "severity: 'CRITICAL,HIGH'", "exit-code: '1'", "vuln-type: 'os,library'", "ignore-unfixed: true",
     'platforms: linux/amd64,linux/arm64', 'provenance: mode=max', 'sbom: true',
     'DOCKERHUB_TOKEN', 'DOCKERHUB_PUBLISH_ENABLED', "DOCKERHUB_NAMESPACE || 'qingzonex'",
     'latest=false', "!contains(steps.identity.outputs.version, '-')",
@@ -164,6 +165,8 @@ for token in [
 ]:
     if token not in publish:
         fail(f"Docker publish workflow is missing release contract token: {token}")
+if not re.search(r"aquasecurity/trivy-action@v\d+\.\d+\.\d+", publish):
+    fail("Docker publish workflow must pin aquasecurity/trivy-action to an explicit release")
 
 workspace = json.loads((ROOT / "app/data/workspace.json").read_text(encoding="utf-8"))
 children = workspace.get("root", {}).get("children", [])
