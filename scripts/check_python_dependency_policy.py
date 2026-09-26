@@ -112,19 +112,16 @@ def main() -> None:
     audit_lines = requirement_lines(AUDIT)
 
     direct_names = requirement_names(abstract_lines, ABSTRACT.name)
-    compat_names = requirement_names(compat_lines, COMPAT.name)
-    if direct_names != compat_names:
-        missing = sorted(direct_names - compat_names)
-        extra = sorted(compat_names - direct_names)
-        fail(
-            "requirements.in and requirements.txt direct dependency sets drifted; "
-            f"missing={missing}, extra={extra}"
-        )
 
-    # During the Alpha transition the compatibility manifest must retain the
-    # same reviewed direct constraints, not merely the same package names.
-    if sorted(abstract_lines) != sorted(compat_lines):
-        fail("requirements.in and requirements.txt direct constraints must stay identical")
+    # requirements.in is the single editable runtime dependency manifest.
+    # requirements.txt remains only as a compatibility entry point for tooling
+    # and deployment instructions that conventionally install requirements.txt.
+    expected_compat = ["-r requirements.in"]
+    if compat_lines != expected_compat:
+        fail(
+            "requirements.txt must remain a thin compatibility shim containing "
+            "only '-r requirements.in'"
+        )
 
     for line in audit_lines:
         if "==" not in line:
