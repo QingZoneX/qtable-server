@@ -201,7 +201,7 @@ Do not expose PostgreSQL, Redis, MinIO administration/API ports or the backend A
 
 ## Docker build source portability
 
-The backend Docker image uses reachable mirrors as the build default: `PYTHON_IMAGE=docker.m.daocloud.io/library/python:3.11-slim`, the Debian sources shipped by that image are rewritten to `mirrors.aliyun.com`, and `PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/`. The default path has to build with no build arguments at all because Rainbond source builds run a bare `docker build` and cannot select an alternate Dockerfile. `requirements.txt` is copied and installed before application source so source-only changes keep Docker's dependency layer cacheable.
+The backend Docker image uses reachable mirrors as the build default: `PYTHON_IMAGE=docker.m.daocloud.io/library/python:3.11-slim`, the Debian sources shipped by that image are rewritten to `mirrors.aliyun.com`, and `PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/`. The default path has to build with no build arguments at all because Rainbond source builds run a bare `docker build` and cannot select an alternate Dockerfile. `requirements.in` is the canonical runtime dependency manifest; `requirements.txt` is a thin pip-compatible shim that includes it. Both are copied before application source so dependency changes invalidate the Docker layer while source-only changes keep that layer cacheable.
 
 The portable official-upstream path is one explicit override away, and it is what the published Docker Hub images use:
 
