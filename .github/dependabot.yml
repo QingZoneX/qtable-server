@@ -6,9 +6,10 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
-    # QTable is an application: dependency PRs intentionally raise the reviewed
-    # minimum version rather than materializing a transitive lock here.
-    versioning-strategy: increase
+    # Most runtime constraints are open-ended lower bounds. Do not churn those
+    # minimums when they already admit a newer release; exact/upper-bounded
+    # requirements are still updated when the new version is otherwise blocked.
+    versioning-strategy: increase-if-necessary
     # requirements.txt is only a pip-compatible shim to requirements.in.
     # Scanning both files made Dependabot rewrite the shim as a fully resolved
     # transitive requirements file, which conflicts with the repository policy.
