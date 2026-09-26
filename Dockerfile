@@ -36,11 +36,14 @@ RUN set -eux; \
 WORKDIR /build
 COPY requirements.txt ./
 RUN python -m venv "$VIRTUAL_ENV" \
+    && "$VIRTUAL_ENV/bin/pip" install --index-url "$PIP_INDEX_URL" --upgrade \
+      pip==26.2.1 setuptools==84.0.0 wheel==0.46.3 \
     && "$VIRTUAL_ENV/bin/pip" install --index-url "$PIP_INDEX_URL" -r requirements.txt
 
 FROM ${PYTHON_IMAGE} AS runtime
 
 ARG APT_MIRROR=mirrors.aliyun.com
+ARG PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
 ARG QTABLE_VERSION=0.0.0-dev
 ARG QTABLE_REVISION=unknown
 ARG QTABLE_CREATED=1970-01-01T00:00:00Z
@@ -70,7 +73,9 @@ RUN set -eux; \
         -e "s|security.debian.org|$APT_MIRROR|g" \
         /etc/apt/sources.list 2>/dev/null || true; \
     fi; \
-    apt-get update \
+    python -m pip install --no-cache-dir --index-url "$PIP_INDEX_URL" --upgrade \
+      pip==26.2.1 setuptools==84.0.0 wheel==0.46.3 \
+    && apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/* \
     && addgroup --system qtable \
