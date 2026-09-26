@@ -114,7 +114,7 @@ for expected in (
     "QTABLE_CREATED=${{ steps.identity.outputs.created }}",
 ):
     assert expected in publish_workflow, expected
-assert re.search(r"aquasecurity/trivy-action@v\\d+\\.\\d+\\.\\d+", publish_workflow), (
+assert re.search(r"aquasecurity/trivy-action@v\d+\.\d+\.\d+", publish_workflow), (
     "Trivy action must be pinned to an explicit release"
 )
 
