@@ -34,7 +34,7 @@ RUN set -eux; \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
-COPY requirements.txt ./
+COPY requirements.in requirements.txt ./
 RUN python -m venv "$VIRTUAL_ENV" \
     && "$VIRTUAL_ENV/bin/pip" install --index-url "$PIP_INDEX_URL" --upgrade \
       pip==26.2.1 setuptools==84.0.0 wheel==0.46.3 \

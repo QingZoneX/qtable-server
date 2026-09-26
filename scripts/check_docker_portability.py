@@ -35,9 +35,10 @@ assert dockerfile.index(
 assert "--build-arg PYTHON_IMAGE=python:3.11-slim" in dockerfile
 assert "--build-arg PIP_INDEX_URL=https://pypi.org/simple" in dockerfile
 assert 'if [ -n "$APT_MIRROR" ]' in dockerfile
+assert "COPY requirements.in requirements.txt ./" in dockerfile
 assert '"$VIRTUAL_ENV/bin/pip" install --index-url "$PIP_INDEX_URL" -r requirements.txt' in dockerfile
 
-requirements_index = dockerfile.index("COPY requirements.txt ./")
+requirements_index = dockerfile.index("COPY requirements.in requirements.txt ./")
 requirements_install = dockerfile.index('"$VIRTUAL_ENV/bin/pip" install --index-url "$PIP_INDEX_URL" -r requirements.txt')
 runtime_stage = dockerfile.index("FROM ${PYTHON_IMAGE} AS runtime")
 app_copy = dockerfile.index("COPY --chown=qtable:qtable app ./app")
