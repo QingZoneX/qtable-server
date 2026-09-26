@@ -104,6 +104,7 @@ for expected in (
     "severity: 'CRITICAL,HIGH'",
     "exit-code: '1'",
     "vuln-type: 'os,library'",
+    "ignore-unfixed: true",
     "provenance: mode=max",
     "sbom: true",
     "latest=false",
