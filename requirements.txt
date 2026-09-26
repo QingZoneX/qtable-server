@@ -1,30 +1,4 @@
-fastapi>=0.109.0
-uvicorn[standard]>=0.27.0
-strawberry-graphql[fastapi]>=0.219.0
-sqlalchemy>=2.0.25
-asyncpg>=0.29.0
-aiosqlite>=0.22.1
-alembic>=1.13.1
-PyJWT>=2.10.1
-cryptography>=50.0.1
-passlib[bcrypt]>=1.7.4
-python-multipart>=0.0.6
-redis>=8.1.0
-websockets>=12.0
-pydantic>=2.6.0
-pydantic-settings>=2.1.0
-# pydantic-ai 2.x removed Agent(output_retries=..., tool_retries=...).
-# Keep the v1 compatibility window until ai_tool_router is migrated to Agent(retries=...).
-pydantic-ai-slim[openai]>=1.107.1,<2.0.0
-langgraph>=1.2.12
-langgraph-checkpoint>=0.1.0
-python-dotenv>=1.2.3
-sqlmodel>=0.0.42
-email-validator>=2.1.0
-greenlet>=3.0.0
-minio>=7.2.20
-simpleeval>=1.0.8
-pytest>=8.4.0
-pytest-asyncio>=1.4.0
-
-openpyxl>=3.1.5
+# Compatibility install manifest.
+# Direct dependency policy lives in requirements.in so humans and Dependabot
+# maintain exactly one editable runtime dependency source.
+-r requirements.in
