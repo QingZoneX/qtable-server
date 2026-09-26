@@ -165,7 +165,7 @@ for token in [
 ]:
     if token not in publish:
         fail(f"Docker publish workflow is missing release contract token: {token}")
-if not re.search(r"aquasecurity/trivy-action@v\\d+\\.\\d+\\.\\d+", publish):
+if not re.search(r"aquasecurity/trivy-action@v\d+\.\d+\.\d+", publish):
     fail("Docker publish workflow must pin aquasecurity/trivy-action to an explicit release")
 
 workspace = json.loads((ROOT / "app/data/workspace.json").read_text(encoding="utf-8"))
