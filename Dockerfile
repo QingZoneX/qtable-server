@@ -38,7 +38,8 @@ COPY requirements.txt ./
 RUN python -m venv "$VIRTUAL_ENV" \
     && "$VIRTUAL_ENV/bin/pip" install --index-url "$PIP_INDEX_URL" --upgrade \
       pip==26.2.1 setuptools==84.0.0 wheel==0.46.3 \
-    && "$VIRTUAL_ENV/bin/pip" install --index-url "$PIP_INDEX_URL" -r requirements.txt
+    && "$VIRTUAL_ENV/bin/pip" install --index-url "$PIP_INDEX_URL" -r requirements.txt \
+    && "$VIRTUAL_ENV/bin/python" -m pip uninstall -y pip
 
 FROM ${PYTHON_IMAGE} AS runtime
 
@@ -78,6 +79,7 @@ RUN set -eux; \
     && apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/* \
+    && python -m pip uninstall -y pip \
     && addgroup --system qtable \
     && adduser --system --ingroup qtable --home /home/qtable qtable \
     && mkdir -p /app /usr/share/licenses/qtable \
