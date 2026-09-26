@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
@@ -100,7 +101,6 @@ for expected in (
     "docker/login-action@v4",
     "docker/metadata-action@v6",
     "docker/build-push-action@v7",
-    "aquasecurity/trivy-action@v0.35.0",
     "severity: 'CRITICAL,HIGH'",
     "exit-code: '1'",
     "vuln-type: 'os,library'",
@@ -114,6 +114,9 @@ for expected in (
     "QTABLE_CREATED=${{ steps.identity.outputs.created }}",
 ):
     assert expected in publish_workflow, expected
+assert re.search(r"aquasecurity/trivy-action@v\\d+\\.\\d+\\.\\d+", publish_workflow), (
+    "Trivy action must be pinned to an explicit release"
+)
 
 for expected in (
     "Git tag",
