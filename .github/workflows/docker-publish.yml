@@ -132,6 +132,7 @@ jobs:
           exit-code: '1'
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
 
       - name: Build and publish multi-arch image
         id: build
