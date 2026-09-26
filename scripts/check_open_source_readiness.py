@@ -156,7 +156,7 @@ publish = (ROOT / ".github/workflows/docker-publish.yml").read_text(encoding="ut
 for token in [
     'docker/login-action@v4', 'docker/setup-qemu-action@v4', 'docker/setup-buildx-action@v4',
     'docker/metadata-action@v6', 'docker/build-push-action@v7',
-    "severity: 'CRITICAL,HIGH'", "exit-code: '1'", "vuln-type: 'os,library'",
+    "severity: 'CRITICAL,HIGH'", "exit-code: '1'", "vuln-type: 'os,library'", "ignore-unfixed: true",
     'platforms: linux/amd64,linux/arm64', 'provenance: mode=max', 'sbom: true',
     'DOCKERHUB_TOKEN', 'DOCKERHUB_PUBLISH_ENABLED', "DOCKERHUB_NAMESPACE || 'qingzonex'",
     'latest=false', "!contains(steps.identity.outputs.version, '-')",
