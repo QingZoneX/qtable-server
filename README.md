@@ -10,6 +10,8 @@ QTable combines flexible tables, multiple project views, dashboards, permissions
 - Web frontend: [QingZoneX/qtable-web](https://github.com/QingZoneX/qtable-web)
 - Project portal and documentation: [QingZoneX.github.io](https://qingzonex.github.io/)
 
+**Source ownership:** `QingZoneX/QTableServerPrivate` is the sole canonical development source. This public repository is the reviewed release/snapshot lane. Public issues and contribution proposals remain welcome; maintainers port product-code changes into the canonical source before a new snapshot. This notice does not claim the public snapshot contains the latest private business features. See [release/sync ownership](docs/source-ownership.md).
+
 ## Why QTable
 
 Traditional multidimensional tables usually start with configuration. QTable aims for a shorter path from a goal to executable work:

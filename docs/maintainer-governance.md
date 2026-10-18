@@ -2,6 +2,10 @@
 
 QTable uses pull-request based development for public contributions. The repository files in `.github/` define intake, ownership and dependency-update automation; GitHub branch/ruleset enforcement is enabled when the repository plan/visibility permits it.
 
+## Canonical development
+
+Follow [development source and public snapshots](source-ownership.md). Public contribution intake does not make this repository a second product development main.
+
 ## Required public-main protection
 
 Immediately after the repository becomes public (or an upgraded private plan permits equivalent rules), configure `main` so that:
